@@ -12,25 +12,15 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // 1. الاستماع لتغيرات الجلسة بشكل متزامن وبسيط لتفادي تعليق أقفال الويب (Web Locks Deadlock)
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user);
-        fetchProfile(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
-
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          setUser(session.user);
-          await fetchProfile(session.user.id);
-        } else {
-          setUser(null);
+      (event, session) => {
+        const currentUser = session?.user || null;
+        setUser(currentUser);
+        
+        // إذا لم يكن هناك مستخدم مسجل، قم بإلغاء التحميل فوراً
+        if (!currentUser) {
           setProfile(null);
           setLoading(false);
         }
@@ -39,6 +29,15 @@ export function AuthProvider({ children }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // 2. جلب الملف الشخصي بشكل منفصل عند تغير المستخدم لتجنب التداخل غير المتزامن
+  useEffect(() => {
+    if (user) {
+      fetchProfile(user.id);
+    } else {
+      setProfile(null);
+    }
+  }, [user]);
 
   async function fetchProfile(userId) {
     try {
