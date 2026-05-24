@@ -111,6 +111,7 @@ CREATE TABLE expenses (
   branch TEXT NOT NULL CHECK (branch IN ('mecca', 'jeddah')),
   receipt_url TEXT,
   created_by UUID REFERENCES profiles(id),
+  created_by_name TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -126,6 +127,7 @@ CREATE TABLE revenues (
   revenue_date DATE NOT NULL DEFAULT CURRENT_DATE,
   branch TEXT NOT NULL CHECK (branch IN ('mecca', 'jeddah')),
   created_by UUID REFERENCES profiles(id),
+  created_by_name TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -208,6 +210,7 @@ CREATE TABLE collections (
   notes TEXT,
   branch TEXT NOT NULL CHECK (branch IN ('mecca', 'jeddah')),
   collected_by UUID REFERENCES profiles(id),
+  collected_by_name TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
