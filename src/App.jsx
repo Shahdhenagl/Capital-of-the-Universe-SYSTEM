@@ -20,6 +20,7 @@ import SpareParts from './pages/SpareParts';
 import SparePartsInvoice from './pages/SparePartsInvoice';
 import Employees from './pages/Employees';
 import EmployeeProfile from './pages/EmployeeProfile';
+import Payroll from './pages/Payroll';
 import Users from './pages/Users';
 import Notifications from './pages/Notifications';
 import ActivityLog from './pages/ActivityLog';
@@ -56,6 +57,7 @@ function AppRoutes() {
               <Route path="/revenue" element={<Revenue cityFilter={cityFilter} />} />
               <Route path="/spare-parts" element={<SpareParts cityFilter={cityFilter} />} />
               <Route path="/spare-parts/invoice" element={<SparePartsInvoice />} />
+              <Route path="/payroll" element={<Payroll cityFilter={cityFilter} />} />
               <Route path="/employees" element={<Employees cityFilter={cityFilter} />} />
               <Route path="/employees/:id" element={<EmployeeProfile />} />
               <Route path="/users" element={

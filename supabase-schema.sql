@@ -75,6 +75,7 @@ INSERT INTO expense_categories (name) VALUES
   ('كهرباء ومياه'),
   ('صيانة مكتب'),
   ('تسويق وإعلانات'),
+  ('سلف موظفين'),
   ('أخرى');
 
 -- ==============================================
@@ -345,6 +346,43 @@ INSERT INTO services (name) VALUES
   ('معاينات');
 
 -- ==============================================
+-- 20. جدول سلف الموظفين
+-- ==============================================
+CREATE TABLE employee_advances (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+  amount NUMERIC(12,2) NOT NULL,
+  advance_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'deducted', 'repaid')),
+  notes TEXT,
+  created_by UUID REFERENCES profiles(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ==============================================
+-- 21. جدول مدفوعات الرواتب
+-- ==============================================
+CREATE TABLE salaries_payments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+  payment_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  period_month INTEGER NOT NULL CHECK (period_month BETWEEN 1 AND 12),
+  period_year INTEGER NOT NULL,
+  base_salary NUMERIC(12,2) NOT NULL,
+  allowances NUMERIC(12,2) DEFAULT 0,
+  allowance_days NUMERIC(5,2) DEFAULT 0,
+  deductions NUMERIC(12,2) DEFAULT 0,
+  deduction_days NUMERIC(5,2) DEFAULT 0,
+  advances_deducted NUMERIC(12,2) DEFAULT 0,
+  net_salary NUMERIC(12,2) NOT NULL,
+  payment_method TEXT DEFAULT 'cash' CHECK (payment_method IN ('cash', 'visa', 'bank_transfer', 'other')),
+  status TEXT DEFAULT 'paid' CHECK (status IN ('paid', 'pending')),
+  notes TEXT,
+  created_by UUID REFERENCES profiles(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ==============================================
 -- إعدادات RLS (Row Level Security)
 -- ==============================================
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -366,6 +404,8 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activity_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cash_register ENABLE ROW LEVEL SECURITY;
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE employee_advances ENABLE ROW LEVEL SECURITY;
+ALTER TABLE salaries_payments ENABLE ROW LEVEL SECURITY;
 
 -- سياسات الوصول - السماح لجميع المستخدمين المصادق عليهم
 CREATE POLICY "Users can view all profiles" ON profiles FOR SELECT USING (auth.uid() IS NOT NULL);
@@ -381,7 +421,8 @@ BEGIN
     'clients', 'client_sites', 'expense_categories', 'revenue_categories',
     'expenses', 'revenues', 'quotations', 'contracts', 'collection_schedule',
     'collections', 'employees', 'spare_parts', 'spare_parts_invoices',
-    'spare_parts_invoice_items', 'notifications', 'activity_log', 'cash_register', 'services'
+    'spare_parts_invoice_items', 'notifications', 'activity_log', 'cash_register', 'services',
+    'employee_advances', 'salaries_payments'
   ])
   LOOP
     EXECUTE format('CREATE POLICY "Authenticated users can read %I" ON %I FOR SELECT USING (auth.uid() IS NOT NULL)', t, t);
