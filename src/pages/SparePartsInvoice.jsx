@@ -129,9 +129,11 @@ function SparePartsInvoice() {
         invoice_id: invoice.id,
         spare_part_id: item.spare_part_id,
         quantity: item.quantity,
-        unit_price: item.unit_price,
-        buy_price: item.buy_price,
-        total: item.unit_price * item.quantity
+        unit_buy_price: item.buy_price,
+        unit_sell_price: item.unit_price,
+        total_price: item.unit_price * item.quantity,
+        total_cost: item.buy_price * item.quantity,
+        profit: (item.unit_price - item.buy_price) * item.quantity
       }));
 
       const { error: itemsError } = await supabase
@@ -182,7 +184,7 @@ function SparePartsInvoice() {
       navigate('/spare-parts');
     } catch (err) {
       console.error('Error saving invoice:', err);
-      alert('حدث خطأ أثناء حفظ الفاتورة');
+      alert(`حدث خطأ أثناء حفظ الفاتورة: ${err.message || 'خطأ غير معروف'}`);
     } finally {
       setSaving(false);
     }
