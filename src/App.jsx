@@ -24,6 +24,7 @@ import Payroll from './pages/Payroll';
 import Users from './pages/Users';
 import Notifications from './pages/Notifications';
 import ActivityLog from './pages/ActivityLog';
+import Integrations from './pages/Integrations';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -67,6 +68,11 @@ function AppRoutes() {
               } />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/activity-log" element={<ActivityLog cityFilter={cityFilter} />} />
+              <Route path="/integrations" element={
+                <ProtectedRoute adminOnly>
+                  <Integrations />
+                </ProtectedRoute>
+              } />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Layout>

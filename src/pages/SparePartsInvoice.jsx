@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase, formatCurrency, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { FileText, Plus, Trash2, Save, ArrowRight, Package, DollarSign } from 'lucide-react';
+import { notifyIntegrations } from '../lib/integrations';
 
 function SparePartsInvoice() {
   const { profile } = useAuth();
@@ -115,7 +116,7 @@ function SparePartsInvoice() {
           payment_method: paymentMethod,
           total_amount: totalSell,
           total_cost: totalCost,
-          net_profit: netProfit,
+          total_profit: netProfit,
           notes,
           created_by: profile?.id
         })
@@ -149,17 +150,13 @@ function SparePartsInvoice() {
         }
       }
 
-      await supabase.from('revenue').insert({
-        type: 'spare_parts',
+      await supabase.from('revenues').insert({
+        client_id: clientId,
         amount: totalSell,
-        cost: totalCost,
-        profit: netProfit,
         branch,
-        payment_method: paymentMethod,
-        reference_id: invoice.id,
-        reference_number: invoiceNumber,
         description: `فاتورة بيع قطع غيار رقم ${invoiceNumber}`,
-        created_by: profile?.id
+        created_by: profile?.id,
+        created_by_name: profile?.full_name
       });
 
       const client = clients.find(c => c.id === clientId);
@@ -172,6 +169,14 @@ function SparePartsInvoice() {
         `تم إنشاء فاتورة بيع قطع غيار رقم ${invoiceNumber} للعميل ${client?.name || ''} بمبلغ ${formatCurrency(totalSell)}`,
         branch
       );
+
+      await notifyIntegrations({
+        title: 'فاتورة قطع غيار جديدة',
+        message: `تم إنشاء فاتورة قطع غيار رقم ${invoiceNumber} للعميل ${client?.name || ''}`,
+        amount: formatCurrency(totalSell),
+        branch,
+        link: '/spare-parts'
+      });
 
       alert(`تم إنشاء الفاتورة رقم ${invoiceNumber} بنجاح`);
       navigate('/spare-parts');

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, formatCurrency, CITIES, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Users, Plus, Upload, Search, Phone, MapPin, DollarSign, X } from 'lucide-react';
+import { Users, Plus, Upload, Search, Phone, MapPin, DollarSign, X, MessageCircle, Navigation } from 'lucide-react';
+import { openGoogleMaps, openWhatsApp } from '../lib/integrations';
 import Papa from 'papaparse';
 
 function Clients() {
@@ -73,6 +74,16 @@ function Clients() {
 
   function handleFormChange(field, value) {
     setForm(prev => ({ ...prev, [field]: value }));
+  }
+
+  function contactClient(event, client) {
+    event.stopPropagation();
+    openWhatsApp(client.phone, `مرحباً ${client.name}، معكم شركة عاصمة الكون.`);
+  }
+
+  function openClientMap(event, client) {
+    event.stopPropagation();
+    openGoogleMaps(client.address || `${client.name} ${CITIES[client.city] || ''}`);
   }
 
   function resetForm() {
@@ -296,6 +307,26 @@ function Clients() {
                       {formatCurrency(due)}
                     </span>
                   </span>
+                </div>
+                <div className="quick-actions mt-16">
+                  <button
+                    className="btn btn-whatsapp btn-sm"
+                    onClick={(event) => contactClient(event, client)}
+                    disabled={!client.phone}
+                    title="إرسال واتساب"
+                  >
+                    <MessageCircle size={14} />
+                    واتساب
+                  </button>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={(event) => openClientMap(event, client)}
+                    disabled={!client.address && !client.city}
+                    title="فتح الموقع على الخريطة"
+                  >
+                    <Navigation size={14} />
+                    الخريطة
+                  </button>
                 </div>
               </div>
             );

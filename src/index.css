@@ -1223,6 +1223,12 @@ a:hover {
   gap: 24px;
 }
 
+.profile-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .profile-stat {
   text-align: center;
 }
@@ -1500,6 +1506,29 @@ a:hover {
 .text-center { text-align: center; }
 .font-bold { font-weight: 700; }
 .font-semibold { font-weight: 600; }
+
+.quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.integration-env-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.integration-env-list code {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--info-light);
+  font-size: 0.78rem;
+  direction: ltr;
+}
 
 /* ===== Responsive ===== */
 @media (max-width: 1024px) {

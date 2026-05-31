@@ -328,11 +328,11 @@ function Contracts() {
                                 </thead>
                                 <tbody>
                                   {scheduleData.map(item => {
-                                    const remaining = (parseFloat(item.amount_due) || 0) - (parseFloat(item.collected_amount) || 0);
+                                    const remaining = (parseFloat(item.amount) || 0) - (parseFloat(item.collected_amount) || 0);
                                     return (
                                       <tr key={item.id}>
                                         <td>{formatDate(item.due_date)}</td>
-                                        <td>{formatCurrency(item.amount_due)}</td>
+                                        <td>{formatCurrency(item.amount)}</td>
                                         <td>{formatCurrency(item.collected_amount || 0)}</td>
                                         <td>
                                           <strong>{formatCurrency(remaining > 0 ? remaining : 0)}</strong>

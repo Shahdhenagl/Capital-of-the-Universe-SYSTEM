@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import {
   LayoutDashboard, Users, FileText, Wallet, TrendingDown, TrendingUp,
   Package, UserCog, BarChart3, Bell, Activity, Shield, LogOut,
-  Menu, X, ChevronLeft, Building2, FileCheck, Coins
+  Menu, X, ChevronLeft, Building2, FileCheck, Coins, Plug
 } from 'lucide-react';
 
 const navItems = [
@@ -30,6 +30,7 @@ const navItems = [
   { path: '/users', label: 'المستخدمين', icon: Shield, adminOnly: true },
   { path: '/activity-log', label: 'سجل الأنشطة', icon: Activity },
   { path: '/notifications', label: 'الإشعارات', icon: Bell },
+  { path: '/integrations', label: 'التكاملات', icon: Plug, adminOnly: true },
 ];
 
 export default function Layout({ children, cityFilter, setCityFilter }) {

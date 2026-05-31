@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, formatCurrency, formatDate, CITIES, QUOTATION_STATUS, PAYMENT_METHODS } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Phone, Mail, MapPin, Building2, FileText, DollarSign, Plus, ArrowRight, X, Calendar } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Building2, FileText, DollarSign, Plus, ArrowRight, X, Calendar, MessageCircle, Navigation } from 'lucide-react';
+import { openGoogleMaps, openWhatsApp } from '../lib/integrations';
 
 function ClientProfile() {
   const { id } = useParams();
@@ -114,9 +115,9 @@ function ClientProfile() {
       let paid = 0;
       (data || []).forEach(c => {
         if (c.status === 'collected') {
-          paid += (c.paid_amount || c.amount || 0);
+          paid += (c.collected_amount || c.amount || 0);
         } else {
-          due += (c.amount || 0) - (c.paid_amount || 0);
+          due += (c.amount || 0) - (c.collected_amount || 0);
         }
       });
       setTotalDue(due);
@@ -129,7 +130,7 @@ function ClientProfile() {
   async function fetchSites() {
     try {
       const { data, error } = await supabase
-        .from('sites')
+        .from('client_sites')
         .select('*')
         .eq('client_id', id)
         .order('created_at', { ascending: false });
@@ -165,7 +166,7 @@ function ClientProfile() {
     try {
       setSavingSite(true);
       const { error } = await supabase
-        .from('sites')
+        .from('client_sites')
         .insert({
           client_id: id,
           site_name: siteForm.site_name,
@@ -217,6 +218,14 @@ function ClientProfile() {
       partial: 'جزئي'
     };
     return map[status] || status;
+  }
+
+  function contactClient() {
+    openWhatsApp(client?.phone, `مرحباً ${client?.name || ''}، معكم شركة عاصمة الكون.`);
+  }
+
+  function openClientMap() {
+    openGoogleMaps(client?.address || `${client?.name || ''} ${CITIES[client?.city] || ''}`);
   }
 
   const tabs = [
@@ -302,6 +311,16 @@ function ClientProfile() {
             <div className="profile-stat-value text-primary">{activeContracts}</div>
             <div className="profile-stat-label">العقود النشطة</div>
           </div>
+        </div>
+        <div className="profile-actions">
+          <button className="btn btn-whatsapp btn-sm" onClick={contactClient} disabled={!client.phone}>
+            <MessageCircle size={16} />
+            واتساب
+          </button>
+          <button className="btn btn-secondary btn-sm" onClick={openClientMap} disabled={!client.address && !client.city}>
+            <Navigation size={16} />
+            الخريطة
+          </button>
         </div>
       </div>
 
@@ -436,7 +455,7 @@ function ClientProfile() {
                             </span>
                           </td>
                           <td>{formatCurrency(c.amount)}</td>
-                          <td>{formatCurrency(c.paid_amount || 0)}</td>
+                          <td>{formatCurrency(c.collected_amount || 0)}</td>
                           <td>
                             <span className={`badge ${getStatusBadge(c.status)}`}>
                               {getStatusText(c.status)}
@@ -479,6 +498,12 @@ function ClientProfile() {
                           <MapPin size={16} className="text-muted" />
                           <span className="text-muted">{site.address || '-'}</span>
                         </div>
+                        {site.address && (
+                          <button className="btn btn-secondary btn-sm mb-16" onClick={() => openGoogleMaps(site.address)}>
+                            <Navigation size={14} />
+                            فتح الموقع
+                          </button>
+                        )}
                         <div className="flex gap-16">
                           <span className={`badge ${site.city === 'mecca' ? 'badge-info' : 'badge-primary'}`}>
                             {CITIES[site.city] || site.city}
@@ -527,8 +552,8 @@ function ClientProfile() {
                       {spareInvoices.map(inv => (
                         <tr key={inv.id}>
                           <td>{inv.invoice_number || inv.id?.slice(0, 8)}</td>
-                          <td>{inv.description || '-'}</td>
-                          <td>{formatCurrency(inv.amount)}</td>
+                          <td>{inv.notes || '-'}</td>
+                          <td>{formatCurrency(inv.total_amount)}</td>
                           <td>
                             <span className={`badge ${getStatusBadge(inv.status)}`}>
                               {getStatusText(inv.status)}
