@@ -17,11 +17,11 @@ export default async function handler(req, res) {
 
   const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+    body: new URLSearchParams({
       chat_id: chatId,
       text,
-      disable_web_page_preview: true
+      disable_web_page_preview: 'true'
     })
   });
 
