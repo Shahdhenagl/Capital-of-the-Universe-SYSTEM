@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase, formatCurrency, formatDate, CITIES, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { TrendingUp, Plus, Settings, Search, Calendar, Trash2, X, Edit } from 'lucide-react';
+import { notifyTransaction } from '../lib/integrations';
 
 function Revenue() {
   const { profile } = useAuth();
@@ -182,6 +183,20 @@ function Revenue() {
           `تعديل إيراد بمبلغ ${formatCurrency(payload.amount)}`,
           payload.branch
         );
+
+        await notifyTransaction({
+          type: 'إيراد',
+          action: 'تعديل',
+          amount: formatCurrency(payload.amount),
+          actor: profile?.full_name || profile?.email,
+          branch: CITIES[payload.branch] || payload.branch,
+          category: categories.find(cat => cat.id === payload.category_id)?.name,
+          client: clients.find(client => client.id === payload.client_id)?.name,
+          description: payload.description,
+          date: formatDate(payload.revenue_date),
+          reference: editingRevenue.id,
+          link: '/revenue'
+        });
       } else {
         const { data, error } = await supabase
           .from('revenues')
@@ -200,6 +215,20 @@ function Revenue() {
           `إضافة إيراد بمبلغ ${formatCurrency(payload.amount)}`,
           payload.branch
         );
+
+        await notifyTransaction({
+          type: 'إيراد',
+          action: 'إضافة',
+          amount: formatCurrency(payload.amount),
+          actor: profile?.full_name || profile?.email,
+          branch: CITIES[payload.branch] || payload.branch,
+          category: categories.find(cat => cat.id === payload.category_id)?.name,
+          client: clients.find(client => client.id === payload.client_id)?.name,
+          description: payload.description,
+          date: formatDate(payload.revenue_date),
+          reference: data?.id,
+          link: '/revenue'
+        });
       }
 
       setShowAddModal(false);
@@ -232,6 +261,20 @@ function Revenue() {
         `حذف إيراد بمبلغ ${formatCurrency(revenue.amount)}`,
         revenue.branch
       );
+
+      await notifyTransaction({
+        type: 'إيراد',
+        action: 'حذف',
+        amount: formatCurrency(revenue.amount),
+        actor: profile?.full_name || profile?.email,
+        branch: CITIES[revenue.branch] || revenue.branch,
+        category: revenue.revenue_categories?.name,
+        client: revenue.clients?.name,
+        description: revenue.description,
+        date: formatDate(revenue.revenue_date),
+        reference: revenue.id,
+        link: '/revenue'
+      });
 
       fetchRevenues();
     } catch (err) {

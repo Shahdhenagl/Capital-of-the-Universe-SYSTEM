@@ -113,6 +113,40 @@ export async function notifyIntegrations(event) {
     .forEach(result => console.warn('Integration notification skipped:', result.reason?.message || result.reason));
 }
 
+export async function notifyTransaction({
+  type,
+  action = 'تسجيل',
+  amount,
+  actor,
+  branch,
+  description,
+  date,
+  reference,
+  category,
+  client,
+  employee,
+  link
+}) {
+  const lines = [
+    category ? `النوع: ${category}` : '',
+    client ? `العميل: ${client}` : '',
+    employee ? `الموظف: ${employee}` : '',
+    date ? `التاريخ: ${date}` : '',
+    reference ? `المرجع: ${reference}` : '',
+    description ? `الوصف: ${description}` : ''
+  ].filter(Boolean);
+
+  await notifyIntegrations({
+    title: `معاملة جديدة: ${type}`,
+    message: `${action} ${type}`,
+    actor,
+    amount,
+    branch,
+    lines,
+    link
+  });
+}
+
 export async function appendGoogleSheet(sheetName, rows) {
   if (!rows?.length) return false;
   await postJson('/api/google-sheets-append', { sheetName, rows });

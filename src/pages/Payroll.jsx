@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, formatCurrency, formatDate, CITIES, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { notifyTransaction } from '../lib/integrations';
 import { 
   Coins, Plus, Search, Calendar, Check, X, Users, 
   TrendingDown, TrendingUp, AlertCircle, DollarSign, Clock, FileText
@@ -344,6 +345,19 @@ function PayrollPage({ cityFilter }) {
         disburseEmployee.branch
       );
 
+      await notifyTransaction({
+        type: 'صرف راتب',
+        action: 'اعتماد',
+        amount: formatCurrency(summary.net),
+        actor: profile?.full_name || profile?.email,
+        branch: CITIES[disburseEmployee.branch] || disburseEmployee.branch,
+        employee: disburseEmployee.name,
+        date: formatDate(new Date()),
+        reference: salaryRecord.id,
+        description: `راتب شهر ${monthLabel} / ${selectedYear} - الأساسي ${formatCurrency(summary.base)} - الحوافز ${formatCurrency(summary.allowance)} - الخصومات ${formatCurrency(summary.deduction)} - السلف المستقطعة ${formatCurrency(summary.advancesDeducted)}`,
+        link: '/payroll'
+      });
+
       // Refresh and close
       setShowDisburseModal(false);
       await fetchInitialData();
@@ -454,6 +468,19 @@ function PayrollPage({ cityFilter }) {
         selectedEmp.branch
       );
 
+      await notifyTransaction({
+        type: 'سلفة موظف',
+        action: 'صرف',
+        amount: formatCurrency(amountVal),
+        actor: profile?.full_name || profile?.email,
+        branch: CITIES[selectedEmp.branch] || selectedEmp.branch,
+        employee: selectedEmp.name,
+        date: formatDate(newAdvance.advance_date),
+        reference: advanceRecord.id,
+        description: newAdvance.notes || 'بدون ملاحظات',
+        link: '/payroll'
+      });
+
       setShowAdvanceModal(false);
       setNewAdvance({
         employee_id: '',
@@ -531,6 +558,19 @@ function PayrollPage({ cityFilter }) {
         `تسديد سلفة الموظف ${adv.employees?.name} نقداً بقيمة ${formatCurrency(adv.amount)}`,
         adv.employees?.branch
       );
+
+      await notifyTransaction({
+        type: 'سداد سلفة',
+        action: 'تحصيل',
+        amount: formatCurrency(adv.amount),
+        actor: profile?.full_name || profile?.email,
+        branch: CITIES[adv.employees?.branch] || adv.employees?.branch,
+        employee: adv.employees?.name,
+        date: formatDate(new Date()),
+        reference: adv.id,
+        description: 'سداد نقدي لسلفة موظف',
+        link: '/payroll'
+      });
 
       await fetchInitialData();
     } catch (err) {

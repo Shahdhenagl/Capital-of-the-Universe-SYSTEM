@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase, formatCurrency, formatDate, CITIES, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { TrendingDown, Plus, Settings, Search, Calendar, Trash2, X, Edit } from 'lucide-react';
+import { notifyTransaction } from '../lib/integrations';
 
 function Expenses() {
   const { profile } = useAuth();
@@ -161,6 +162,19 @@ function Expenses() {
           `تعديل مصروف بمبلغ ${formatCurrency(payload.amount)}`,
           payload.branch
         );
+
+        await notifyTransaction({
+          type: 'مصروف',
+          action: 'تعديل',
+          amount: formatCurrency(payload.amount),
+          actor: profile?.full_name || profile?.email,
+          branch: CITIES[payload.branch] || payload.branch,
+          category: categories.find(cat => cat.id === payload.category_id)?.name,
+          description: payload.description,
+          date: formatDate(payload.expense_date),
+          reference: editingExpense.id,
+          link: '/expenses'
+        });
       } else {
         const { data, error } = await supabase
           .from('expenses')
@@ -179,6 +193,19 @@ function Expenses() {
           `إضافة مصروف بمبلغ ${formatCurrency(payload.amount)}`,
           payload.branch
         );
+
+        await notifyTransaction({
+          type: 'مصروف',
+          action: 'إضافة',
+          amount: formatCurrency(payload.amount),
+          actor: profile?.full_name || profile?.email,
+          branch: CITIES[payload.branch] || payload.branch,
+          category: categories.find(cat => cat.id === payload.category_id)?.name,
+          description: payload.description,
+          date: formatDate(payload.expense_date),
+          reference: data?.id,
+          link: '/expenses'
+        });
       }
 
       setShowAddModal(false);
@@ -211,6 +238,19 @@ function Expenses() {
         `حذف مصروف بمبلغ ${formatCurrency(expense.amount)}`,
         expense.branch
       );
+
+      await notifyTransaction({
+        type: 'مصروف',
+        action: 'حذف',
+        amount: formatCurrency(expense.amount),
+        actor: profile?.full_name || profile?.email,
+        branch: CITIES[expense.branch] || expense.branch,
+        category: expense.expense_categories?.name,
+        description: expense.description,
+        date: formatDate(expense.expense_date),
+        reference: expense.id,
+        link: '/expenses'
+      });
 
       fetchExpenses();
     } catch (err) {
