@@ -550,7 +550,7 @@ function ClientProfile() {
                     </thead>
                     <tbody>
                       {spareInvoices.map(inv => (
-                        <tr key={inv.id}>
+                        <tr key={inv.id} className="clickable" onClick={() => navigate(`/spare-parts/invoices/${inv.id}`)}>
                           <td>{inv.invoice_number || inv.id?.slice(0, 8)}</td>
                           <td>{inv.notes || '-'}</td>
                           <td>{formatCurrency(inv.total_amount)}</td>

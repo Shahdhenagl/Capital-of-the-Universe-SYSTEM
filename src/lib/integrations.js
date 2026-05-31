@@ -85,12 +85,17 @@ async function postJson(path, payload) {
 }
 
 export async function notifyIntegrations(event) {
+  const link = event.link?.startsWith('/')
+    ? `${window.location.origin}${event.link}`
+    : event.link;
   const message = [
     event.title,
     event.message,
+    event.actor ? `المستخدم: ${event.actor}` : '',
     event.amount ? `المبلغ: ${event.amount}` : '',
     event.branch ? `الفرع: ${event.branch}` : '',
-    event.link ? `الرابط: ${event.link}` : ''
+    ...(event.lines || []),
+    link ? `الرابط: ${link}` : ''
   ].filter(Boolean).join('\n');
 
   const calls = [

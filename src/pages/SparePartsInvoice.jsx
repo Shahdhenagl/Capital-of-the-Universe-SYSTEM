@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, formatCurrency, logActivity } from '../lib/supabase';
+import { supabase, formatCurrency, CITIES, PAYMENT_METHODS, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { FileText, Plus, Trash2, Save, ArrowRight, Package, DollarSign } from 'lucide-react';
 import { notifyIntegrations } from '../lib/integrations';
@@ -162,6 +162,12 @@ function SparePartsInvoice() {
       });
 
       const client = clients.find(c => c.id === clientId);
+      const invoiceLink = `/spare-parts/invoices/${invoice.id}`;
+      const itemsSummary = validItems.map(item => {
+        const part = spareParts.find(p => p.id === item.spare_part_id);
+        return `- ${part?.name || 'قطعة'} x ${item.quantity} = ${formatCurrency(item.unit_price * item.quantity)}`;
+      });
+
       await logActivity(
         profile?.id,
         profile?.full_name,
@@ -175,13 +181,21 @@ function SparePartsInvoice() {
       await notifyIntegrations({
         title: 'فاتورة قطع غيار جديدة',
         message: `تم إنشاء فاتورة قطع غيار رقم ${invoiceNumber} للعميل ${client?.name || ''}`,
+        actor: profile?.full_name || profile?.email || 'مستخدم غير معروف',
         amount: formatCurrency(totalSell),
-        branch,
-        link: '/spare-parts'
+        branch: CITIES[branch] || branch,
+        lines: [
+          `طريقة الدفع: ${PAYMENT_METHODS[paymentMethod] || paymentMethod}`,
+          `إجمالي التكلفة: ${formatCurrency(totalCost)}`,
+          `صافي الربح: ${formatCurrency(netProfit)}`,
+          'القطع:',
+          ...itemsSummary
+        ],
+        link: invoiceLink
       });
 
       alert(`تم إنشاء الفاتورة رقم ${invoiceNumber} بنجاح`);
-      navigate('/spare-parts');
+      navigate(invoiceLink);
     } catch (err) {
       console.error('Error saving invoice:', err);
       alert(`حدث خطأ أثناء حفظ الفاتورة: ${err.message || 'خطأ غير معروف'}`);

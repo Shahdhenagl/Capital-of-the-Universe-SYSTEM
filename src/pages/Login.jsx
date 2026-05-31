@@ -64,9 +64,7 @@ function Login() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-logo">
-          <div className="logo-circle">
-            🏗️
-          </div>
+          <img className="login-logo-img" src="/logo-transparent.png" alt="عاصمة الكون FUJI-YEM Elevators" />
           <h1>عاصمة الكون</h1>
           <p>نظام إدارة المصاعد</p>
         </div>

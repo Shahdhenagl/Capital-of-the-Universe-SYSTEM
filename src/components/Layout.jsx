@@ -126,7 +126,7 @@ export default function Layout({ children, cityFilter, setCityFilter }) {
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo">
-            <div className="logo-icon">🏗️</div>
+            <img className="app-logo-img" src="/logo-transparent.png" alt="عاصمة الكون FUJI-YEM Elevators" />
             <div>
               <h1>عاصمة الكون</h1>
               <span className="logo-subtitle">نظام إدارة المصاعد</span>
