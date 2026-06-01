@@ -1,29 +1,42 @@
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://eguiubznbjellqyientv.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://jlakhsbhjafezyoluvrb.supabase.co';
+const FALLBACK_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsYWtoc2JoamFmZXp5b2x1dnJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMzA0NjIsImV4cCI6MjA5NTkwNjQ2Mn0.es4mAo3aIy7i3Fr293GwV1cNdn7ATEe4QZOF8avQM80';
+const SUPABASE_KEYS = [
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  process.env.SUPABASE_ANON_KEY,
+  FALLBACK_ANON_KEY
+].filter(Boolean);
 
 function json(res, status, body) {
   res.status(status).json(body);
 }
 
 async function supabaseRequest(path, options = {}) {
-  if (!SUPABASE_KEY) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY');
+  if (SUPABASE_KEYS.length === 0) throw new Error('Missing Supabase API key');
 
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...options,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
+  let lastError = '';
+  for (const key of SUPABASE_KEYS) {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      ...options,
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+      }
+    });
+
+    if (response.ok) {
+      if (response.status === 204) return null;
+      return response.json();
     }
-  });
 
-  if (!response.ok) {
-    throw new Error(await response.text());
+    lastError = await response.text();
+    if (!lastError.includes('Invalid API key')) {
+      throw new Error(lastError);
+    }
   }
 
-  if (response.status === 204) return null;
-  return response.json();
+  throw new Error(lastError || 'Invalid Supabase API key');
 }
 
 function parseNotes(notes) {

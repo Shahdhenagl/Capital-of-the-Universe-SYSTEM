@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Check, FileText, MessageSquare, Printer, X } from 'lucide-react';
+import { Check, FileText, Globe, Mail, MapPin, MessageSquare, Phone, Printer, X } from 'lucide-react';
 import { CITIES, formatCurrency, formatDate } from '../lib/supabase';
 
 const DETAIL_SECTIONS = [
@@ -41,6 +41,59 @@ function detailRows(quotation) {
   );
 }
 
+const companyContacts = [
+  {
+    city: 'مكة المكرمة',
+    phones: [
+      { number: '0544113161', whatsapp: 'https://wa.me/966544113161' },
+      { number: '0544600116', whatsapp: 'https://wa.me/966544600116' }
+    ]
+  },
+  {
+    city: 'جدة',
+    phones: [
+      { number: '0544113161', whatsapp: 'https://wa.me/966544113161' },
+      { number: '0504413330', whatsapp: 'https://wa.me/966504413330' }
+    ]
+  }
+];
+
+const publicStyles = {
+  page: {
+    minHeight: '100vh',
+    background: 'linear-gradient(180deg, #0f172a 0%, #111827 360px, #f8fafc 360px, #f8fafc 100%)',
+    padding: '28px 18px 48px'
+  },
+  shell: { maxWidth: '1080px', margin: '0 auto' },
+  hero: {
+    background: '#ffffff',
+    borderRadius: '18px',
+    padding: '26px',
+    border: '1px solid #e2e8f0',
+    boxShadow: '0 22px 60px rgba(15, 23, 42, 0.18)'
+  },
+  heroTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '18px', flexWrap: 'wrap' },
+  brand: { display: 'flex', alignItems: 'center', gap: '14px' },
+  logo: { width: '64px', height: '64px', objectFit: 'contain' },
+  eyebrow: { color: '#0284c7', fontWeight: 800, margin: 0 },
+  title: { color: '#0f172a', fontSize: '2rem', lineHeight: 1.25, margin: '6px 0 0' },
+  priceBox: { background: '#ecfdf5', border: '1px solid #bbf7d0', color: '#047857', borderRadius: '14px', padding: '16px 20px', minWidth: '220px' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '14px', marginTop: '24px' },
+  infoBox: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px' },
+  card: { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '22px', marginTop: '18px' },
+  contactGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' },
+  contactBox: { background: '#f8fafc', border: '1px solid #dbeafe', borderRadius: '14px', padding: '16px' },
+  actionLink: { display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#0369a1', fontWeight: 800, textDecoration: 'none', marginInlineEnd: '12px', marginTop: '8px' },
+  responseCard: { background: '#0f172a', color: '#ffffff', borderRadius: '18px', padding: '22px', marginTop: '18px' }
+};
+
+function friendlyError(message) {
+  if (message?.includes('Invalid API key')) {
+    return 'تعذر فتح عرض السعر حاليًا بسبب إعداد مفتاح Supabase على السيرفر. برجاء تحديث متغيرات Vercel ثم إعادة المحاولة.';
+  }
+  return message || 'تعذر تحميل عرض السعر';
+}
+
 export default function PublicQuotation() {
   const { id } = useParams();
   const [quotation, setQuotation] = useState(null);
@@ -68,7 +121,7 @@ export default function PublicQuotation() {
       if (!response.ok) throw new Error(data.error || 'تعذر تحميل عرض السعر');
       setQuotation(data.quotation);
     } catch (err) {
-      setError(err.message || 'تعذر تحميل عرض السعر');
+      setError(friendlyError(err.message));
     } finally {
       setLoading(false);
     }
@@ -90,7 +143,7 @@ export default function PublicQuotation() {
       if (!response.ok) throw new Error(data.error || 'تعذر إرسال الرد');
       setSubmitted(true);
     } catch (err) {
-      alert(err.message || 'تعذر إرسال الرد');
+      alert(friendlyError(err.message));
     } finally {
       setSubmitting(false);
     }
@@ -114,55 +167,61 @@ export default function PublicQuotation() {
   }
 
   return (
-    <div dir="rtl" style={{ minHeight: '100vh', background: 'var(--bg-primary)', padding: '24px' }}>
-      <div style={{ maxWidth: '980px', margin: '0 auto' }}>
-        <div className="card mb-24">
-          <div className="card-body">
-            <div className="flex-between" style={{ alignItems: 'flex-start', gap: '16px' }}>
+    <div dir="rtl" style={publicStyles.page}>
+      <div style={publicStyles.shell}>
+        <div style={publicStyles.hero}>
+          <div style={publicStyles.heroTop}>
+            <div style={publicStyles.brand}>
+              <img src="/logo-transparent.png" alt="عاصمة الكون" style={publicStyles.logo} />
               <div>
-                <h1 className="page-title" style={{ marginBottom: '8px' }}>عرض سعر من شركة عاصمة الكون</h1>
-                <p className="text-muted">رقم العرض: {quotation.quotation_number || quotation.id?.slice(0, 8)}</p>
+                <p style={publicStyles.eyebrow}>شركة عاصمة الكون للمصاعد</p>
+                <h1 style={publicStyles.title}>عرض سعر رسمي</h1>
+                <p className="text-muted" style={{ marginTop: '8px' }}>
+                  رقم العرض: {quotation.quotation_number || quotation.id?.slice(0, 8)}
+                </p>
               </div>
-              <button className="btn btn-secondary" onClick={() => window.print()}>
-                <Printer size={18} />
-                طباعة / حفظ PDF
-              </button>
             </div>
+            <div style={publicStyles.priceBox}>
+              <span style={{ display: 'block', color: '#047857', fontWeight: 700 }}>إجمالي العرض</span>
+              <strong style={{ display: 'block', fontSize: '1.6rem', marginTop: '6px' }}>{formatCurrency(quotation.amount)}</strong>
+            </div>
+          </div>
 
-            <div className="form-row-3 mt-24">
-              <div>
-                <span className="form-label">العميل</span>
-                <p className="font-bold">{quotation.clients?.name || '-'}</p>
-              </div>
-              <div>
-                <span className="form-label">تاريخ العرض</span>
-                <p className="font-bold">{formatDate(quotation.created_at)}</p>
-              </div>
-              <div>
-                <span className="form-label">الفرع</span>
-                <p className="font-bold">{CITIES[quotation.branch] || quotation.branch || '-'}</p>
-              </div>
+          <div style={publicStyles.grid}>
+            <div style={publicStyles.infoBox}>
+              <span className="form-label">العميل</span>
+              <p className="font-bold" style={{ color: '#0f172a' }}>{quotation.clients?.name || '-'}</p>
             </div>
+            <div style={publicStyles.infoBox}>
+              <span className="form-label">تاريخ العرض</span>
+              <p className="font-bold" style={{ color: '#0f172a' }}>{formatDate(quotation.created_at)}</p>
+            </div>
+            <div style={publicStyles.infoBox}>
+              <span className="form-label">الفرع</span>
+              <p className="font-bold" style={{ color: '#0f172a' }}>{CITIES[quotation.branch] || quotation.branch || '-'}</p>
+            </div>
+            <div style={publicStyles.infoBox}>
+              <span className="form-label">عنوان العرض</span>
+              <p className="font-bold" style={{ color: '#0f172a' }}>{quotation.title || '-'}</p>
+            </div>
+          </div>
 
-            <div className="form-row mt-24">
-              <div>
-                <span className="form-label">عنوان العرض</span>
-                <p className="font-bold">{quotation.title || '-'}</p>
-              </div>
-              <div>
-                <span className="form-label">إجمالي العرض</span>
-                <p className="font-bold text-success" style={{ fontSize: '1.4rem' }}>{formatCurrency(quotation.amount)}</p>
-              </div>
-            </div>
+          <div className="flex gap-8 mt-24">
+            <button className="btn btn-primary" onClick={() => document.getElementById('client-response')?.scrollIntoView({ behavior: 'smooth' })}>
+              <MessageSquare size={18} />
+              الرد على العرض
+            </button>
+            <button className="btn btn-secondary" onClick={() => window.print()}>
+              <Printer size={18} />
+              طباعة / حفظ PDF
+            </button>
           </div>
         </div>
 
         {rows.length > 0 && (
-          <div className="card mb-24">
-            <div className="card-header">
-              <h3 className="card-title">تفاصيل ومواصفات العرض</h3>
-            </div>
-            <div className="card-body">
+          <div style={publicStyles.card}>
+            <h3 className="font-bold mb-16">تفاصيل ومواصفات العرض</h3>
+            <div className="table-container">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -186,104 +245,137 @@ export default function PublicQuotation() {
         )}
 
         {parsedDescription.plainDescription && (
-          <div className="card mb-24">
-            <div className="card-body">
-              <h3 className="font-semibold mb-16">ملاحظات إضافية</h3>
-              <p className="text-muted" style={{ whiteSpace: 'pre-wrap' }}>{parsedDescription.plainDescription}</p>
-            </div>
+          <div style={publicStyles.card}>
+            <h3 className="font-bold mb-16">ملاحظات إضافية</h3>
+            <p className="text-muted" style={{ whiteSpace: 'pre-wrap' }}>{parsedDescription.plainDescription}</p>
           </div>
         )}
 
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title"><MessageSquare size={18} /> رد العميل على عرض السعر</h3>
-          </div>
-          <div className="card-body">
-            {submitted ? (
-              <div className="empty-state">
-                <Check size={52} className="text-success" />
-                <h3>تم إرسال ردك بنجاح</h3>
-                <p>شكراً لك، سيتم التواصل معك من فريق عاصمة الكون قريباً.</p>
+        <div style={publicStyles.card}>
+          <h3 className="font-bold mb-16">تواصل معنا</h3>
+          <div style={publicStyles.contactGrid}>
+            {companyContacts.map(branch => (
+              <div key={branch.city} style={publicStyles.contactBox}>
+                <h4 className="font-bold" style={{ color: '#0f172a', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <MapPin size={18} />
+                  {branch.city}
+                </h4>
+                {branch.phones.map(phone => (
+                  <div key={phone.number} style={{ marginTop: '12px' }}>
+                    <a href={`tel:${phone.number}`} style={publicStyles.actionLink}>
+                      <Phone size={16} />
+                      {phone.number}
+                    </a>
+                    <a href={phone.whatsapp} target="_blank" rel="noreferrer" style={publicStyles.actionLink}>
+                      <MessageSquare size={16} />
+                      واتساب
+                    </a>
+                  </div>
+                ))}
               </div>
-            ) : (
-              <form onSubmit={submitResponse}>
-                <div className="form-row-3">
-                  <button
-                    type="button"
-                    className={`btn ${responseForm.decision === 'accepted' ? 'btn-success' : 'btn-secondary'}`}
-                    onClick={() => setResponseForm(prev => ({ ...prev, decision: 'accepted' }))}
-                  >
-                    <Check size={18} />
-                    موافق
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn ${responseForm.decision === 'negotiation' ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => setResponseForm(prev => ({ ...prev, decision: 'negotiation' }))}
-                  >
-                    تفاوض
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn ${responseForm.decision === 'rejected' ? 'btn-danger' : 'btn-secondary'}`}
-                    onClick={() => setResponseForm(prev => ({ ...prev, decision: 'rejected' }))}
-                  >
-                    <X size={18} />
-                    رافض
-                  </button>
-                </div>
+            ))}
+          </div>
+          <div className="flex gap-16 mt-16" style={{ flexWrap: 'wrap' }}>
+            <a href="mailto:sales@capital-of-universe.com" style={publicStyles.actionLink}>
+              <Mail size={16} />
+              sales@capital-of-universe.com
+            </a>
+            <a href="https://capitalofuniverse-ksa.com" target="_blank" rel="noreferrer" style={publicStyles.actionLink}>
+              <Globe size={16} />
+              capitalofuniverse-ksa.com
+            </a>
+          </div>
+        </div>
 
-                {responseForm.decision === 'negotiation' && (
-                  <div className="form-group mt-24">
-                    <label className="form-label">السعر المقترح</label>
-                    <input
-                      type="number"
-                      className="form-input"
-                      value={responseForm.negotiated_amount}
-                      onChange={(event) => setResponseForm(prev => ({ ...prev, negotiated_amount: event.target.value }))}
-                      min="0"
-                      step="0.01"
-                      placeholder="اكتب السعر المقترح"
-                    />
-                  </div>
-                )}
+        <div id="client-response" style={publicStyles.responseCard}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            <MessageSquare size={20} />
+            رد العميل على عرض السعر
+          </h3>
+          {submitted ? (
+            <div className="empty-state" style={{ color: '#fff' }}>
+              <Check size={52} className="text-success" />
+              <h3>تم إرسال ردك بنجاح</h3>
+              <p>شكراً لك، سيتم التواصل معك من فريق عاصمة الكون قريباً.</p>
+            </div>
+          ) : (
+            <form onSubmit={submitResponse}>
+              <div className="form-row-3">
+                <button
+                  type="button"
+                  className={`btn ${responseForm.decision === 'accepted' ? 'btn-success' : 'btn-secondary'}`}
+                  onClick={() => setResponseForm(prev => ({ ...prev, decision: 'accepted' }))}
+                >
+                  <Check size={18} />
+                  موافق
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${responseForm.decision === 'negotiation' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setResponseForm(prev => ({ ...prev, decision: 'negotiation' }))}
+                >
+                  تفاوض
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${responseForm.decision === 'rejected' ? 'btn-danger' : 'btn-secondary'}`}
+                  onClick={() => setResponseForm(prev => ({ ...prev, decision: 'rejected' }))}
+                >
+                  <X size={18} />
+                  رافض
+                </button>
+              </div>
 
-                <div className="form-row mt-24">
-                  <div className="form-group">
-                    <label className="form-label">اسمك</label>
-                    <input
-                      className="form-input"
-                      value={responseForm.customer_name}
-                      onChange={(event) => setResponseForm(prev => ({ ...prev, customer_name: event.target.value }))}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">رقم التواصل</label>
-                    <input
-                      className="form-input"
-                      value={responseForm.customer_phone}
-                      onChange={(event) => setResponseForm(prev => ({ ...prev, customer_phone: event.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">ملاحظات</label>
-                  <textarea
-                    className="form-textarea"
-                    value={responseForm.notes}
-                    onChange={(event) => setResponseForm(prev => ({ ...prev, notes: event.target.value }))}
-                    placeholder="اكتب ملاحظاتك أو سبب الرفض أو تفاصيل التفاوض..."
-                    rows={4}
+              {responseForm.decision === 'negotiation' && (
+                <div className="form-group mt-24">
+                  <label className="form-label" style={{ color: '#cbd5e1' }}>السعر المقترح</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={responseForm.negotiated_amount}
+                    onChange={(event) => setResponseForm(prev => ({ ...prev, negotiated_amount: event.target.value }))}
+                    min="0"
+                    step="0.01"
+                    placeholder="اكتب السعر المقترح"
                   />
                 </div>
+              )}
 
-                <button className="btn btn-primary btn-lg" type="submit" disabled={submitting}>
-                  {submitting ? 'جاري إرسال الرد...' : 'إرسال الرد'}
-                </button>
-              </form>
-            )}
-          </div>
+              <div className="form-row mt-24">
+                <div className="form-group">
+                  <label className="form-label" style={{ color: '#cbd5e1' }}>اسمك</label>
+                  <input
+                    className="form-input"
+                    value={responseForm.customer_name}
+                    onChange={(event) => setResponseForm(prev => ({ ...prev, customer_name: event.target.value }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={{ color: '#cbd5e1' }}>رقم التواصل</label>
+                  <input
+                    className="form-input"
+                    value={responseForm.customer_phone}
+                    onChange={(event) => setResponseForm(prev => ({ ...prev, customer_phone: event.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={{ color: '#cbd5e1' }}>ملاحظات</label>
+                <textarea
+                  className="form-textarea"
+                  value={responseForm.notes}
+                  onChange={(event) => setResponseForm(prev => ({ ...prev, notes: event.target.value }))}
+                  placeholder="اكتب ملاحظاتك أو سبب الرفض أو تفاصيل التفاوض..."
+                  rows={4}
+                />
+              </div>
+
+              <button className="btn btn-primary btn-lg" type="submit" disabled={submitting}>
+                {submitting ? 'جاري إرسال الرد...' : 'إرسال الرد'}
+              </button>
+            </form>
+          )}
         </div>
       </div>
     </div>
