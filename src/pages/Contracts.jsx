@@ -693,8 +693,10 @@ function Contracts({ cityFilter = 'all' }) {
         continue;
       }
 
-      const safeName = attachment.name.replace(/[^\w.\-ء-ي]+/g, '_');
-      const filePath = `contracts/${contractNumber}/${Date.now()}_${safeName}`;
+      const rawExtension = attachment.name?.split('.').pop() || 'bin';
+      const extension = rawExtension.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'bin';
+      const safeContractNumber = String(contractNumber || 'contract').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filePath = `contracts/${safeContractNumber}/${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${extension}`;
       const { error: uploadError } = await supabase.storage
         .from('documents')
         .upload(filePath, attachment._file);

@@ -120,6 +120,13 @@ function isMissingStorageBucket(error) {
   return message.includes('bucket not found') || message.includes('bucket_not_found');
 }
 
+function getSafeStoragePath(folder, file, fallbackExtension = 'pdf') {
+  const rawExtension = file?.name?.split('.').pop() || fallbackExtension;
+  const extension = rawExtension.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || fallbackExtension;
+  const uniqueName = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${extension}`;
+  return `${folder}/${uniqueName}`;
+}
+
 function Quotations({ cityFilter: globalCityFilter = 'all' }) {
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -290,8 +297,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
   async function uploadQuotationPdf(file) {
     if (!file) return { url: null, warning: '' };
 
-    const safeName = file.name.replace(/[^\w.\-ء-ي]+/g, '_');
-    const fileName = `quotations/${Date.now()}_${safeName}`;
+    const fileName = getSafeStoragePath('quotations', file, 'pdf');
     const { error: uploadError } = await supabase.storage
       .from('documents')
       .upload(fileName, file);
