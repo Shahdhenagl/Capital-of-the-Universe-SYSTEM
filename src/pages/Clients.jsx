@@ -428,21 +428,23 @@ function Clients() {
                     الخريطة
                   </button>
                   <button
-                    className="btn btn-secondary btn-sm"
+                    className="btn btn-secondary btn-sm btn-edit-icon"
                     onClick={(event) => openEditModal(event, client)}
                     title="تعديل بيانات العميل"
                   >
                     <Edit size={14} />
-                    تعديل
                   </button>
-                  <button
-                    className={`btn btn-sm ${(client.status || 'active') === 'inactive' ? 'btn-success' : 'btn-secondary'}`}
-                    onClick={(event) => toggleClientStatus(event, client)}
-                    title={(client.status || 'active') === 'inactive' ? 'تنشيط العميل' : 'تعطيل العميل'}
-                  >
-                    {(client.status || 'active') === 'inactive' ? <UserCheck size={14} /> : <UserX size={14} />}
-                    {(client.status || 'active') === 'inactive' ? 'تنشيط' : 'تعطيل'}
-                  </button>
+                  <div className="flex-center gap-8" onClick={(event) => event.stopPropagation()} style={{ marginRight: 'auto' }}>
+                    <span className="text-muted" style={{ fontSize: '0.8rem' }}>نشط</span>
+                    <label className="switch-toggle" title={(client.status || 'active') === 'inactive' ? 'تنشيط العميل' : 'تعطيل العميل'}>
+                      <input
+                        type="checkbox"
+                        checked={(client.status || 'active') === 'active'}
+                        onChange={(event) => toggleClientStatus(event, client)}
+                      />
+                      <span className="slider"></span>
+                    </label>
+                  </div>
                 </div>
               </div>
             );
