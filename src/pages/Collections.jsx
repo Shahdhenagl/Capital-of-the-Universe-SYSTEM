@@ -43,7 +43,7 @@ function Collections() {
         .eq('status', 'pending')
         .lt('due_date', today);
     } catch (err) {
-      console.error('Ø®Ø·Ø£ ÙÙŠ ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù…ØªØ£Ø®Ø±Ø§Øª:', err);
+      console.error('خطأ في تحديث المتأخرات:', err);
     }
   }
 
@@ -58,7 +58,7 @@ function Collections() {
       if (error) throw error;
       setSchedules(data || []);
     } catch (err) {
-      console.error('Ø®Ø·Ø£ ÙÙŠ Ø¬Ù„Ø¨ Ø¬Ø¯ÙˆÙ„ Ø§Ù„ØªØ­ØµÙŠÙ„Ø§Øª:', err);
+      console.error('خطأ في جلب جدول التحصيلات:', err);
     } finally {
       setLoading(false);
     }
@@ -154,10 +154,10 @@ function Collections() {
         JSON.stringify(rows, null, 2),
         'application/json'
       );
-      alert('ØªÙ… Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„ØªÙ‚Ø±ÙŠØ± Ø¥Ù„Ù‰ Google Sheets/Drive Ø¥Ø°Ø§ ÙƒØ§Ù†Øª Ø§Ù„Ù…ÙØ§ØªÙŠØ­ Ù…ÙØ¹Ù„Ø© Ø¹Ù„Ù‰ Vercel');
+      alert('تم إرسال التقرير إلى Google Sheets/Drive إذا كانت المفاتيح مفعلة على Vercel');
     } catch (err) {
       console.error('Google export failed:', err);
-      alert('ØªØ¹Ø°Ø± Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„ØªÙ‚Ø±ÙŠØ± Ø¥Ù„Ù‰ Google. Ø±Ø§Ø¬Ø¹ÙŠ Ù…ÙØ§ØªÙŠØ­ Google ÙÙŠ Vercel.');
+      alert('تعذر إرسال التقرير إلى Google. راجعي مفاتيح Google في Vercel.');
     }
   }
 
@@ -165,12 +165,12 @@ function Collections() {
     const remaining = (parseFloat(schedule.amount) || 0) - (parseFloat(schedule.collected_amount) || 0);
     openWhatsApp(
       schedule.clients?.phone,
-      `Ù…Ø±Ø­Ø¨Ø§Ù‹ ${schedule.clients?.name || ''}ØŒ\n` +
-      `Ù†Ø°ÙƒØ±ÙƒÙ… Ø¨Ù…ÙˆØ¹Ø¯ ØªØ­ØµÙŠÙ„ Ù…Ø³ØªØ­Ù‚ Ù„Ø´Ø±ÙƒØ© Ø¹Ø§ØµÙ…Ø© Ø§Ù„ÙƒÙˆÙ†.\n` +
-      `Ø±Ù‚Ù… Ø§Ù„Ø¹Ù‚Ø¯: ${schedule.contracts?.contract_number || '-'}\n` +
-      `ØªØ§Ø±ÙŠØ® Ø§Ù„Ø§Ø³ØªØ­Ù‚Ø§Ù‚: ${formatDate(schedule.due_date)}\n` +
-      `Ø§Ù„Ù…Ø¨Ù„Øº Ø§Ù„Ù…ØªØ¨Ù‚ÙŠ: ${formatCurrency(remaining)}\n` +
-      `Ø´ÙƒØ±Ø§Ù‹ Ù„ÙƒÙ….`
+      `مرحباً ${schedule.clients?.name || ''}،\n` +
+      `نذكركم بموعد تحصيل مستحق لشركة عاصمة الكون.\n` +
+      `رقم العقد: ${schedule.contracts?.contract_number || '-'}\n` +
+      `تاريخ الاستحقاق: ${formatDate(schedule.due_date)}\n` +
+      `المبلغ المتبقي: ${formatCurrency(remaining)}\n` +
+      `شكراً لكم.`
     );
   }
 
@@ -243,7 +243,7 @@ function Collections() {
         .from('revenues')
         .insert({
           amount: collectedAmount,
-          description: `ØªØ­ØµÙŠÙ„ Ø¯ÙØ¹Ø© - Ø¹Ù‚Ø¯ ${selectedSchedule.contracts?.contract_number || ''} - ${selectedSchedule.clients?.name || ''}`,
+          description: `تحصيل دفعة - عقد ${selectedSchedule.contracts?.contract_number || ''} - ${selectedSchedule.clients?.name || ''}`,
           revenue_date: collectForm.collection_date,
           branch: selectedSchedule.branch,
           client_id: selectedSchedule.client_id,
@@ -255,16 +255,16 @@ function Collections() {
       await logActivity(
         profile?.id,
         profile?.full_name,
-        'ØªØ³Ø¬ÙŠÙ„ ØªØ­ØµÙŠÙ„',
+        'تسجيل تحصيل',
         'collections',
         selectedSchedule.id,
-        `ØªØ­ØµÙŠÙ„ Ù…Ø¨Ù„Øº ${formatCurrency(collectedAmount)} Ù…Ù† ${selectedSchedule.clients?.name || 'Ø¹Ù…ÙŠÙ„'} - Ø¹Ù‚Ø¯ ${selectedSchedule.contracts?.contract_number || ''}`,
+        `تحصيل مبلغ ${formatCurrency(collectedAmount)} من ${selectedSchedule.clients?.name || 'عميل'} - عقد ${selectedSchedule.contracts?.contract_number || ''}`,
         selectedSchedule.branch
       );
 
       await notifyIntegrations({
-        title: 'ØªØ­ØµÙŠÙ„ Ø¬Ø¯ÙŠØ¯',
-        message: `ØªÙ… ØªØ³Ø¬ÙŠÙ„ ØªØ­ØµÙŠÙ„ Ù…Ù† ${selectedSchedule.clients?.name || 'Ø¹Ù…ÙŠÙ„'} Ù„Ø¹Ù‚Ø¯ ${selectedSchedule.contracts?.contract_number || '-'}`,
+        title: 'تحصيل جديد',
+        message: `تم تسجيل تحصيل من ${selectedSchedule.clients?.name || 'عميل'} لعقد ${selectedSchedule.contracts?.contract_number || '-'}`,
         amount: formatCurrency(collectedAmount),
         branch: CITIES[selectedSchedule.branch] || selectedSchedule.branch,
         link: '/collections'
@@ -274,7 +274,7 @@ function Collections() {
       setSelectedSchedule(null);
       fetchSchedules();
     } catch (err) {
-      console.error('Ø®Ø·Ø£ ÙÙŠ ØªØ³Ø¬ÙŠÙ„ Ø§Ù„ØªØ­ØµÙŠÙ„:', err);
+      console.error('خطأ في تسجيل التحصيل:', err);
     } finally {
       setSaving(false);
     }
@@ -288,7 +288,7 @@ function Collections() {
           <span className="title-icon" style={{ background: 'var(--primary-bg)', color: 'var(--primary)' }}>
             <Wallet size={24} />
           </span>
-          Ø§Ù„ØªØ­ØµÙŠÙ„Ø§Øª
+          التحصيلات
         </h1>
         <div className="page-actions">
           <button className="btn btn-secondary" onClick={exportCollectionsCsv}>
@@ -306,7 +306,7 @@ function Collections() {
       <div className="stats-grid">
         <div className="stat-card warning">
           <div className="stat-info">
-            <div className="stat-label">Ù…Ø³ØªØ­Ù‚ Ø§Ù„ÙŠÙˆÙ…</div>
+            <div className="stat-label">مستحق اليوم</div>
             <div className="stat-value">{formatCurrency(dueToday)}</div>
           </div>
           <div className="stat-icon warning">
@@ -316,7 +316,7 @@ function Collections() {
 
         <div className="stat-card info">
           <div className="stat-info">
-            <div className="stat-label">Ù…Ø³ØªØ­Ù‚ Ù‡Ø°Ø§ Ø§Ù„Ø´Ù‡Ø±</div>
+            <div className="stat-label">مستحق هذا الشهر</div>
             <div className="stat-value">{formatCurrency(dueThisMonth)}</div>
           </div>
           <div className="stat-icon info">
@@ -326,7 +326,7 @@ function Collections() {
 
         <div className="stat-card success">
           <div className="stat-info">
-            <div className="stat-label">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ù…Ø­ØµÙ„</div>
+            <div className="stat-label">إجمالي المحصل</div>
             <div className="stat-value">{formatCurrency(totalCollected)}</div>
           </div>
           <div className="stat-icon success">
@@ -336,7 +336,7 @@ function Collections() {
 
         <div className="stat-card danger">
           <div className="stat-info">
-            <div className="stat-label">Ù…ØªØ£Ø®Ø±</div>
+            <div className="stat-label">متأخر</div>
             <div className="stat-value">{formatCurrency(totalOverdue)}</div>
           </div>
           <div className="stat-icon danger">
@@ -354,7 +354,7 @@ function Collections() {
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
           >
-            <option value="">Ø§Ù„ÙƒÙ„</option>
+            <option value="">الكل</option>
             {Object.entries(COLLECTION_STATUS).map(([key, val]) => (
               <option key={key} value={key}>{val}</option>
             ))}
@@ -367,7 +367,7 @@ function Collections() {
             value={filterCity}
             onChange={e => setFilterCity(e.target.value)}
           >
-            <option value="">ÙƒÙ„ Ø§Ù„ÙØ±ÙˆØ¹</option>
+            <option value="">كل الفروع</option>
             {Object.entries(CITIES).map(([key, val]) => (
               <option key={key} value={key}>{val}</option>
             ))}
@@ -380,7 +380,7 @@ function Collections() {
             className="form-input"
             value={filterDateFrom}
             onChange={e => setFilterDateFrom(e.target.value)}
-            placeholder="Ù…Ù† ØªØ§Ø±ÙŠØ®"
+            placeholder="من تاريخ"
           />
         </div>
 
@@ -390,7 +390,7 @@ function Collections() {
             className="form-input"
             value={filterDateTo}
             onChange={e => setFilterDateTo(e.target.value)}
-            placeholder="Ø¥Ù„Ù‰ ØªØ§Ø±ÙŠØ®"
+            placeholder="إلى تاريخ"
           />
         </div>
 
@@ -399,7 +399,7 @@ function Collections() {
           <input
             type="text"
             className="form-input search-input"
-            placeholder="Ø¨Ø­Ø« Ø¨Ø§Ù„Ø¹Ù…ÙŠÙ„ Ø£Ùˆ Ø±Ù‚Ù… Ø§Ù„Ø¹Ù‚Ø¯..."
+            placeholder="بحث بالعميل أو رقم العقد..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
@@ -410,25 +410,25 @@ function Collections() {
       <div className="table-container">
         {loading ? (
           <div className="empty-state">
-            <p>Ø¬Ø§Ø±ÙŠ Ø§Ù„ØªØ­Ù…ÙŠÙ„...</p>
+            <p>جاري التحميل...</p>
           </div>
         ) : filteredSchedules.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">ðŸ’°</div>
-            <h3>Ù„Ø§ ØªÙˆØ¬Ø¯ ØªØ­ØµÙŠÙ„Ø§Øª</h3>
-            <p>Ù„Ù… ÙŠØªÙ… Ø§Ù„Ø¹Ø«ÙˆØ± Ø¹Ù„Ù‰ ØªØ­ØµÙŠÙ„Ø§Øª Ù…Ø·Ø§Ø¨Ù‚Ø© Ù„Ù„Ø¨Ø­Ø«</p>
+            <div className="empty-icon">$</div>
+            <h3>لا توجد تحصيلات</h3>
+            <p>لم يتم العثور على تحصيلات مطابقة للبحث</p>
           </div>
         ) : (
           <table className="data-table">
             <thead>
               <tr>
-                <th>Ø§Ù„Ø¹Ù…ÙŠÙ„</th>
-                <th>Ø±Ù‚Ù… Ø§Ù„Ø¹Ù‚Ø¯</th>
-                <th>ØªØ§Ø±ÙŠØ® Ø§Ù„Ø§Ø³ØªØ­Ù‚Ø§Ù‚</th>
-                <th>Ø§Ù„Ù…Ø¨Ù„Øº Ø§Ù„Ù…Ø³ØªØ­Ù‚</th>
-                <th>Ø§Ù„Ù…Ø¨Ù„Øº Ø§Ù„Ù…Ø­ØµÙ„</th>
-                <th>Ø§Ù„Ø­Ø§Ù„Ø©</th>
-                <th>Ø¥Ø¬Ø±Ø§Ø¡Ø§Øª</th>
+                <th>العميل</th>
+                <th>رقم العقد</th>
+                <th>تاريخ الاستحقاق</th>
+                <th>المبلغ المستحق</th>
+                <th>المبلغ المحصل</th>
+                <th>الحالة</th>
+                <th>إجراءات</th>
               </tr>
             </thead>
             <tbody>
@@ -456,7 +456,7 @@ function Collections() {
                             onClick={() => openCollectModal(schedule)}
                           >
                             <Check size={14} />
-                            ØªØ³Ø¬ÙŠÙ„ ØªØ­ØµÙŠÙ„
+                            تسجيل تحصيل
                           </button>
                           <button
                             className="btn btn-whatsapp btn-sm"
@@ -464,14 +464,14 @@ function Collections() {
                             disabled={!schedule.clients?.phone}
                           >
                             <MessageCircle size={14} />
-                            ØªØ°ÙƒÙŠØ±
+                            تذكير
                           </button>
                         </div>
                       )}
                       {schedule.status === 'collected' && (
                         <span className="badge badge-success">
                           <Check size={12} />
-                          ØªÙ… Ø§Ù„ØªØ­ØµÙŠÙ„
+                          تم التحصيل
                         </span>
                       )}
                     </td>
@@ -488,7 +488,7 @@ function Collections() {
         <div className="modal-overlay" onClick={() => setShowCollectModal(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">ØªØ³Ø¬ÙŠÙ„ ØªØ­ØµÙŠÙ„</h2>
+              <h2 className="modal-title">تسجيل تحصيل</h2>
               <button className="modal-close" onClick={() => setShowCollectModal(false)}>
                 <X size={20} />
               </button>
@@ -501,21 +501,21 @@ function Collections() {
                   <div className="card-body">
                     <div className="form-row">
                       <div>
-                        <span className="form-label">Ø§Ù„Ø¹Ù…ÙŠÙ„:</span>
+                        <span className="form-label">العميل:</span>
                         <strong> {selectedSchedule.clients?.name || '-'}</strong>
                       </div>
                       <div>
-                        <span className="form-label">Ø±Ù‚Ù… Ø§Ù„Ø¹Ù‚Ø¯:</span>
+                        <span className="form-label">رقم العقد:</span>
                         <strong> {selectedSchedule.contracts?.contract_number || '-'}</strong>
                       </div>
                     </div>
                     <div className="form-row" style={{ marginTop: '12px' }}>
                       <div>
-                        <span className="form-label">Ø§Ù„Ù…Ø¨Ù„Øº Ø§Ù„Ù…Ø³ØªØ­Ù‚:</span>
+                        <span className="form-label">المبلغ المستحق:</span>
                         <strong> {formatCurrency(selectedSchedule.amount)}</strong>
                       </div>
                       <div>
-                        <span className="form-label">Ø§Ù„Ù…ØªØ¨Ù‚ÙŠ:</span>
+                        <span className="form-label">المتبقي:</span>
                         <strong> {formatCurrency((parseFloat(selectedSchedule.amount) || 0) - (parseFloat(selectedSchedule.collected_amount) || 0))}</strong>
                       </div>
                     </div>
@@ -524,7 +524,7 @@ function Collections() {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Ø§Ù„Ù…Ø¨Ù„Øº Ø§Ù„Ù…Ø­ØµÙ„ *</label>
+                    <label className="form-label">المبلغ المحصل *</label>
                     <input
                       type="number"
                       className="form-input"
@@ -538,7 +538,7 @@ function Collections() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Ø·Ø±ÙŠÙ‚Ø© Ø§Ù„Ø¯ÙØ¹ *</label>
+                    <label className="form-label">طريقة الدفع *</label>
                     <select
                       className="form-select"
                       value={collectForm.payment_method}
@@ -554,7 +554,7 @@ function Collections() {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">ØªØ§Ø±ÙŠØ® Ø§Ù„ØªØ­ØµÙŠÙ„ *</label>
+                    <label className="form-label">تاريخ التحصيل *</label>
                     <input
                       type="date"
                       className="form-input"
@@ -565,24 +565,24 @@ function Collections() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Ø±Ù‚Ù… Ø§Ù„Ø¥ÙŠØµØ§Ù„</label>
+                    <label className="form-label">رقم الإيصال</label>
                     <input
                       type="text"
                       className="form-input"
                       value={collectForm.receipt_number}
                       onChange={e => setCollectForm({ ...collectForm, receipt_number: e.target.value })}
-                      placeholder="Ø±Ù‚Ù… Ø§Ù„Ø¥ÙŠØµØ§Ù„..."
+                      placeholder="رقم الإيصال..."
                     />
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Ù…Ù„Ø§Ø­Ø¸Ø§Øª</label>
+                  <label className="form-label">ملاحظات</label>
                   <textarea
                     className="form-textarea"
                     value={collectForm.notes}
                     onChange={e => setCollectForm({ ...collectForm, notes: e.target.value })}
-                    placeholder="Ù…Ù„Ø§Ø­Ø¸Ø§Øª Ø¥Ø¶Ø§ÙÙŠØ©..."
+                    placeholder="ملاحظات إضافية..."
                     rows={3}
                   />
                 </div>
@@ -590,14 +590,14 @@ function Collections() {
 
               <div className="modal-footer">
                 <button type="submit" className="btn btn-success" disabled={saving}>
-                  {saving ? 'Ø¬Ø§Ø±ÙŠ Ø§Ù„Ø­ÙØ¸...' : 'ØªØ³Ø¬ÙŠÙ„ Ø§Ù„ØªØ­ØµÙŠÙ„'}
+                  {saving ? 'جاري الحفظ...' : 'تسجيل التحصيل'}
                 </button>
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => setShowCollectModal(false)}
                 >
-                  Ø¥Ù„ØºØ§Ø¡
+                  إلغاء
                 </button>
               </div>
             </form>
