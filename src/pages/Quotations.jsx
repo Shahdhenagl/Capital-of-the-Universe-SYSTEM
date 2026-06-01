@@ -284,6 +284,7 @@ function Quotations() {
 
     try {
       setSaving(true);
+      const selectedService = services.find(service => service.id === form.service_id);
 
       let pdfUrl = null;
       if (form.pdf_file) {
@@ -300,23 +301,36 @@ function Quotations() {
       }
 
       const quotationNumber = `QT-${Date.now().toString().slice(-8)}`;
+      const quotationPayload = {
+        quotation_number: quotationNumber,
+        client_id: form.client_id,
+        service_id: form.service_id || null,
+        service_type: selectedService?.name || form.title,
+        title: form.title,
+        description: buildQuotationDescription(),
+        amount: parseFloat(form.amount),
+        branch: form.branch,
+        status: 'pending',
+        pdf_url: pdfUrl,
+        created_by: profile?.id
+      };
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('quotations')
-        .insert({
-          quotation_number: quotationNumber,
-          client_id: form.client_id,
-          service_id: form.service_id || null,
-          title: form.title,
-          description: buildQuotationDescription(),
-          amount: parseFloat(form.amount),
-          branch: form.branch,
-          status: 'pending',
-          pdf_url: pdfUrl,
-          created_by: profile?.id
-        })
+        .insert(quotationPayload)
         .select()
         .single();
+
+      if (error?.message?.includes('service_id')) {
+        const { service_id, ...payloadWithoutServiceId } = quotationPayload;
+        const fallback = await supabase
+          .from('quotations')
+          .insert(payloadWithoutServiceId)
+          .select()
+          .single();
+        data = fallback.data;
+        error = fallback.error;
+      }
 
       if (error) throw error;
 
@@ -335,7 +349,7 @@ function Quotations() {
       fetchQuotations();
     } catch (err) {
       console.error('خطأ في إنشاء عرض السعر:', err);
-      alert('حدث خطأ أثناء إنشاء عرض السعر');
+      alert(`حدث خطأ أثناء إنشاء عرض السعر: ${err.message || 'خطأ غير معروف'}`);
     } finally {
       setSaving(false);
     }

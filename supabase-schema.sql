@@ -353,6 +353,8 @@ INSERT INTO services (name) VALUES
   ('قطع غيار'),
   ('معاينات');
 
+ALTER TABLE quotations ADD COLUMN IF NOT EXISTS service_id UUID REFERENCES services(id);
+
 -- ==============================================
 -- 20. جدول سلف الموظفين
 -- ==============================================
