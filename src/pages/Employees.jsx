@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase, formatCurrency, formatDate, CITIES, POSITIONS, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Users, Plus, Search, Phone, MapPin, Briefcase, Edit, Trash2, X } from 'lucide-react';
+import { formatSaudiLocalPhoneInput, isValidSaudiLocalPhone } from '../lib/integrations';
 
 function Employees() {
   const { profile } = useAuth();
@@ -105,6 +106,10 @@ function Employees() {
 
   async function handleSave(e) {
     e.preventDefault();
+    if (formData.phone && !isValidSaudiLocalPhone(formData.phone)) {
+      alert('رقم الهاتف يجب أن يكون 9 أرقام ويبدأ بـ 5');
+      return;
+    }
     setSaving(true);
     try {
       const record = {
@@ -366,7 +371,12 @@ function Employees() {
                       type="tel"
                       className="form-input"
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, phone: formatSaudiLocalPhoneInput(e.target.value) })}
+                      placeholder="5xxxxxxxx"
+                      inputMode="numeric"
+                      maxLength={9}
+                      pattern="5[0-9]{8}"
+                      title="رقم سعودي: 9 أرقام ويبدأ بـ 5"
                     />
                   </div>
                 </div>

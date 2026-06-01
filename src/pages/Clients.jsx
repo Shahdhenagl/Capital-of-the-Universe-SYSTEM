@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase, formatCurrency, CITIES, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Users, Plus, Upload, Search, Phone, MapPin, DollarSign, X, MessageCircle, Navigation } from 'lucide-react';
-import { openGoogleMaps, openWhatsApp } from '../lib/integrations';
+import { formatSaudiLocalPhoneInput, isValidSaudiLocalPhone, openGoogleMaps, openWhatsApp } from '../lib/integrations';
 import Papa from 'papaparse';
 
 function Clients() {
@@ -73,7 +73,10 @@ function Clients() {
   }
 
   function handleFormChange(field, value) {
-    setForm(prev => ({ ...prev, [field]: value }));
+    setForm(prev => ({
+      ...prev,
+      [field]: field === 'phone' ? formatSaudiLocalPhoneInput(value) : value
+    }));
   }
 
   function contactClient(event, client) {
@@ -101,6 +104,10 @@ function Clients() {
   async function handleAddClient(e) {
     e.preventDefault();
     if (!form.name || !form.phone) return;
+    if (!isValidSaudiLocalPhone(form.phone)) {
+      alert('رقم الهاتف يجب أن يكون 9 أرقام ويبدأ بـ 5');
+      return;
+    }
 
     try {
       setSaving(true);
@@ -166,13 +173,13 @@ function Clients() {
       setCsvUploading(true);
       const rows = csvData.map(row => ({
         name: row.name || row['الاسم'] || '',
-        phone: row.phone || row['الهاتف'] || '',
+        phone: formatSaudiLocalPhoneInput(row.phone || row['الهاتف'] || ''),
         email: row.email || row['البريد'] || null,
         address: row.address || row['العنوان'] || null,
         city: row.city || row['المدينة'] || 'mecca',
         contact_person: row.contact_person || row['جهة الاتصال'] || null,
         notes: row.notes || row['ملاحظات'] || null
-      })).filter(r => r.name && r.phone);
+      })).filter(r => r.name && isValidSaudiLocalPhone(r.phone));
 
       if (rows.length === 0) {
         alert('لا توجد بيانات صالحة للاستيراد');
@@ -361,11 +368,15 @@ function Clients() {
                   <div className="form-group">
                     <label className="form-label">رقم الهاتف *</label>
                     <input
-                      type="text"
+                      type="tel"
                       className="form-input"
                       value={form.phone}
                       onChange={(e) => handleFormChange('phone', e.target.value)}
-                      placeholder="05xxxxxxxx"
+                      placeholder="5xxxxxxxx"
+                      inputMode="numeric"
+                      maxLength={9}
+                      pattern="5[0-9]{8}"
+                      title="رقم سعودي: 9 أرقام ويبدأ بـ 5"
                       required
                     />
                   </div>

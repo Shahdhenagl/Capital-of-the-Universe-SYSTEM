@@ -4,7 +4,22 @@ function cleanText(value) {
   return String(value || '').trim();
 }
 
+export function formatSaudiLocalPhoneInput(value) {
+  let digits = cleanText(value).replace(/\D/g, '');
+  if (digits.startsWith(DEFAULT_COUNTRY_CODE)) digits = digits.slice(DEFAULT_COUNTRY_CODE.length);
+  if (digits.startsWith('0')) digits = digits.slice(1);
+  if (!digits) return '';
+  if (!digits.startsWith('5')) return '';
+  return digits.slice(0, 9);
+}
+
+export function isValidSaudiLocalPhone(phone) {
+  return /^5\d{8}$/.test(cleanText(phone));
+}
+
 export function normalizeSaudiPhone(phone) {
+  const localPhone = formatSaudiLocalPhoneInput(phone);
+  if (localPhone) return `${DEFAULT_COUNTRY_CODE}${localPhone}`;
   const digits = cleanText(phone).replace(/[^\d+]/g, '');
   if (!digits) return '';
   if (digits.startsWith('+')) return digits.slice(1);
