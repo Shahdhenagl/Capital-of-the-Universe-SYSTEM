@@ -163,7 +163,7 @@ function Dashboard({ cityFilter }) {
     // Fetch recent revenues
     let revQuery = supabase
       .from('revenues')
-      .select('id, amount, revenue_date, description, category_id, revenue_categories(name)')
+      .select('id, amount, revenue_date, description, category_id, created_by_name, revenue_categories(name)')
       .order('created_at', { ascending: false })
       .limit(5);
     if (cityFilter && cityFilter !== 'all') {
@@ -174,7 +174,7 @@ function Dashboard({ cityFilter }) {
     // Fetch recent expenses
     let expQuery = supabase
       .from('expenses')
-      .select('id, amount, expense_date, description, category_id, expense_categories(name)')
+      .select('id, amount, expense_date, description, category_id, created_by_name, expense_categories(name)')
       .order('created_at', { ascending: false })
       .limit(5);
     if (cityFilter && cityFilter !== 'all') {
@@ -189,7 +189,8 @@ function Dashboard({ cityFilter }) {
         amount: r.amount,
         date: r.revenue_date,
         description: r.description || r.revenue_categories?.name || 'إيراد',
-        category: r.revenue_categories?.name || ''
+        category: r.revenue_categories?.name || '',
+        userName: r.created_by_name || ''
       })),
       ...(expenses || []).map(e => ({
         id: e.id,
@@ -197,7 +198,8 @@ function Dashboard({ cityFilter }) {
         amount: e.amount,
         date: e.expense_date,
         description: e.description || e.expense_categories?.name || 'مصروف',
-        category: e.expense_categories?.name || ''
+        category: e.expense_categories?.name || '',
+        userName: e.created_by_name || ''
       }))
     ];
 
@@ -417,6 +419,7 @@ function Dashboard({ cityFilter }) {
                         </div>
                         <div className="text-muted" style={{ fontSize: '0.75rem' }}>
                           {formatDate(transaction.date)}
+                          {transaction.userName ? ` - بواسطة ${transaction.userName}` : ''}
                         </div>
                       </div>
                     </div>

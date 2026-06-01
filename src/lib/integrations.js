@@ -124,6 +124,10 @@ export async function notifyIntegrations(event) {
     })
   ];
 
+  if (event.whatsapp) {
+    calls.push(postJson('/api/send-whatsapp', { text: message, to: event.whatsappTo }));
+  }
+
   const results = await Promise.allSettled(calls);
   results
     .filter(result => result.status === 'rejected')

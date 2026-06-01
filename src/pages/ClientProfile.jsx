@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase, formatCurrency, formatDate, CITIES, QUOTATION_STATUS, PAYMENT_METHODS } from '../lib/supabase';
+import { supabase, formatCurrency, formatDate, CITIES, QUOTATION_STATUS, PAYMENT_METHODS, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { User, Phone, Mail, MapPin, Building2, FileText, DollarSign, Plus, ArrowRight, X, Calendar, MessageCircle, Navigation, Printer, Edit, Trash2 } from 'lucide-react';
-import { openGoogleMaps, openWhatsApp } from '../lib/integrations';
+import { notifyIntegrations, openGoogleMaps, openWhatsApp } from '../lib/integrations';
 
 const QUOTATION_DETAIL_SECTIONS = [
   {
@@ -468,11 +468,21 @@ function ClientProfile() {
         notes: siteForm.notes || null
       };
 
-      const { error } = editingSite
-        ? await supabase.from('client_sites').update(payload).eq('id', editingSite.id)
-        : await supabase.from('client_sites').insert(payload);
+      const { data: savedSite, error } = editingSite
+        ? await supabase.from('client_sites').update(payload).eq('id', editingSite.id).select().single()
+        : await supabase.from('client_sites').insert(payload).select().single();
 
       if (error) throw error;
+
+      await logActivity(
+        profile?.id,
+        profile?.full_name,
+        editingSite ? 'تعديل مبنى' : 'إضافة مبنى',
+        'client_sites',
+        savedSite?.id || editingSite?.id,
+        `${editingSite ? 'تم تعديل' : 'تم إضافة'} مبنى ${payload.site_name} للعميل ${client?.name || ''}`,
+        payload.city
+      );
 
       closeSiteModal();
       fetchSites();
@@ -513,6 +523,15 @@ function ClientProfile() {
         .eq('id', site.id);
 
       if (error) throw error;
+      await logActivity(
+        profile?.id,
+        profile?.full_name,
+        'حذف مبنى',
+        'client_sites',
+        site.id,
+        `تم حذف مبنى ${site.site_name} للعميل ${client?.name || ''}`,
+        site.city || client?.city
+      );
       fetchSites();
     } catch (err) {
       console.error('خطأ في حذف الموقع:', err);
@@ -614,13 +633,23 @@ function ClientProfile() {
           notes: quickForm.notes,
           created_by: profile?.id
         };
-        let { error } = await supabase.from('quotations').insert(quotationPayload);
+        let { data: quotationData, error } = await supabase.from('quotations').insert(quotationPayload).select().single();
         if (error?.message?.includes('service_id')) {
           const { service_id, ...payloadWithoutServiceId } = quotationPayload;
-          const fallback = await supabase.from('quotations').insert(payloadWithoutServiceId);
+          const fallback = await supabase.from('quotations').insert(payloadWithoutServiceId).select().single();
+          quotationData = fallback.data;
           error = fallback.error;
         }
         if (error) throw error;
+        await logActivity(
+          profile?.id,
+          profile?.full_name,
+          'إضافة عرض سعر',
+          'quotations',
+          quotationData?.id,
+          `تم إضافة عرض سعر ${quotationNumber} للعميل ${client?.name || ''} بقيمة ${formatCurrency(amount)}`,
+          branch
+        );
         await fetchQuotations();
         setActiveTab('quotations');
       }
@@ -666,6 +695,15 @@ function ClientProfile() {
           });
           if (scheduleError) throw scheduleError;
         }
+        await logActivity(
+          profile?.id,
+          profile?.full_name,
+          'إضافة عقد',
+          'contracts',
+          contract.id,
+          `تم إضافة عقد ${contractNumber} للعميل ${client?.name || ''} بقيمة ${formatCurrency(amount)}`,
+          branch
+        );
         await Promise.all([fetchContracts(), fetchCollections()]);
         setActiveTab('contracts');
       }
@@ -700,7 +738,30 @@ function ClientProfile() {
             collected_by_name: profile?.full_name
           });
           if (collectionError) throw collectionError;
+          await notifyIntegrations({
+            title: 'تحصيل جديد من ملف العميل',
+            message: `تم تسجيل تحصيل من ${client?.name || 'عميل'} بقيمة ${formatCurrency(collectedAmount)}`,
+            actor: profile?.full_name || profile?.email,
+            amount: formatCurrency(collectedAmount),
+            branch: CITIES[branch] || branch,
+            lines: [
+              quickForm.contract_id ? `العقد: ${contracts.find(contract => contract.id === quickForm.contract_id)?.contract_number || quickForm.contract_id}` : 'بدون عقد مرتبط',
+              `طريقة الدفع: ${PAYMENT_METHODS[quickForm.payment_method] || quickForm.payment_method}`,
+              quickForm.notes ? `ملاحظات: ${quickForm.notes}` : ''
+            ].filter(Boolean),
+            link: `/clients/${id}`,
+            whatsapp: true
+          });
         }
+        await logActivity(
+          profile?.id,
+          profile?.full_name,
+          collectedAmount > 0 ? 'تسجيل تحصيل' : 'إضافة استحقاق',
+          'collections',
+          schedule.id,
+          `${collectedAmount > 0 ? 'تم تسجيل تحصيل' : 'تم إضافة استحقاق'} للعميل ${client?.name || ''} بقيمة ${formatCurrency(collectedAmount > 0 ? collectedAmount : amount)}`,
+          branch
+        );
         await fetchCollections();
         setActiveTab('collections');
       }
@@ -761,6 +822,31 @@ function ClientProfile() {
         collected_by_name: profile?.full_name
       });
       if (collectionError) throw collectionError;
+
+      await logActivity(
+        profile?.id,
+        profile?.full_name,
+        'تسجيل تحصيل',
+        'collections',
+        payingCollection.id,
+        `تم تسجيل تحصيل ${formatCurrency(paidNow)} من العميل ${client?.name || ''}`,
+        payingCollection.branch || client.city || 'mecca'
+      );
+
+      await notifyIntegrations({
+        title: 'تحصيل جديد من ملف العميل',
+        message: `تم تسجيل تحصيل من ${client?.name || 'عميل'} بقيمة ${formatCurrency(paidNow)}`,
+        actor: profile?.full_name || profile?.email,
+        amount: formatCurrency(paidNow),
+        branch: CITIES[payingCollection.branch || client.city || 'mecca'] || payingCollection.branch || client.city,
+        lines: [
+          payingCollection.contracts?.contract_number ? `العقد: ${payingCollection.contracts.contract_number}` : '',
+          `طريقة الدفع: ${PAYMENT_METHODS[paymentForm.payment_method] || paymentForm.payment_method}`,
+          paymentForm.notes ? `ملاحظات: ${paymentForm.notes}` : ''
+        ].filter(Boolean),
+        link: `/clients/${id}`,
+        whatsapp: true
+      });
 
       setPayingCollection(null);
       await fetchCollections();

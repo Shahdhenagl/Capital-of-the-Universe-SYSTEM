@@ -7,6 +7,21 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // ===== Helper Functions =====
 
+function getModuleLink(module) {
+  const key = String(module || '').toLowerCase();
+  if (key.includes('client') || key.includes('عميل')) return '/clients';
+  if (key.includes('quotation') || key.includes('عرض')) return '/quotations';
+  if (key.includes('contract') || key.includes('عقد')) return '/contracts';
+  if (key.includes('collection') || key.includes('تحصيل')) return '/collections';
+  if (key.includes('expense') || key.includes('مصروف')) return '/expenses';
+  if (key.includes('revenue') || key.includes('إيراد')) return '/revenue';
+  if (key.includes('spare') || key.includes('قطع')) return '/spare-parts';
+  if (key.includes('employee') || key.includes('موظف')) return '/employees';
+  if (key.includes('service') || key.includes('خدمة')) return '/services';
+  if (key.includes('user') || key.includes('مستخدم')) return '/users';
+  return '/activity-log';
+}
+
 export async function logActivity(userId, userName, action, module, recordId = null, details = null, branch = null) {
   try {
     await supabase.from('activity_log').insert({
@@ -18,6 +33,14 @@ export async function logActivity(userId, userName, action, module, recordId = n
       details,
       branch
     });
+
+    const actor = userName || 'مستخدم غير معروف';
+    await notifyAllAdmins(
+      `عملية جديدة: ${action}`,
+      `${actor} قام بتنفيذ ${action}${details ? ` - ${details}` : ''}`,
+      'info',
+      getModuleLink(module)
+    );
   } catch (err) {
     console.error('Error logging activity:', err);
   }

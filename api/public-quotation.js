@@ -103,6 +103,22 @@ export default async function handler(req, res) {
         })
       });
 
+      const decisionLabel = decision === 'accepted' ? 'موافق' : decision === 'rejected' ? 'رافض' : 'تفاوض';
+      const users = await supabaseRequest('profiles?is_active=eq.true&select=id');
+      if (users?.length) {
+        await supabaseRequest('notifications', {
+          method: 'POST',
+          headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify(users.map(user => ({
+            user_id: user.id,
+            title: 'رد جديد من العميل على عرض السعر',
+            message: `العميل رد على العرض "${quotation.title || quotation.id}" بقرار: ${decisionLabel}${negotiated_amount ? ` - السعر المقترح: ${negotiated_amount}` : ''}${notes ? ` - ${notes}` : ''}`,
+            type: decision === 'accepted' ? 'success' : decision === 'rejected' ? 'danger' : 'warning',
+            link: `/quotations/${id}`
+          })))
+        });
+      }
+
       return json(res, 200, { ok: true, client_response: clientResponse });
     }
 

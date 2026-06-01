@@ -269,9 +269,11 @@ function Collections({ cityFilter = 'all' }) {
       await notifyIntegrations({
         title: 'تحصيل جديد',
         message: `تم تسجيل تحصيل من ${selectedSchedule.clients?.name || 'عميل'} لعقد ${selectedSchedule.contracts?.contract_number || '-'}`,
+        actor: profile?.full_name || profile?.email,
         amount: formatCurrency(collectedAmount),
         branch: CITIES[selectedSchedule.branch] || selectedSchedule.branch,
-        link: '/collections'
+        link: '/collections',
+        whatsapp: true
       });
 
       setShowCollectModal(false);
