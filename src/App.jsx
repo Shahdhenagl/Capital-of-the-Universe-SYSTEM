@@ -50,30 +50,30 @@ function AppRoutes() {
         <ProtectedRoute>
           <Layout cityFilter={cityFilter} setCityFilter={setCityFilter}>
             <Routes>
-              <Route path="/" element={<Dashboard cityFilter={cityFilter} />} />
-              <Route path="/analytics" element={<Analytics cityFilter={cityFilter} />} />
-              <Route path="/clients" element={<Clients cityFilter={cityFilter} />} />
-              <Route path="/clients/:id" element={<ClientProfile />} />
-              <Route path="/quotations" element={<Quotations cityFilter={cityFilter} />} />
-              <Route path="/quotations/:id" element={<QuotationDetails />} />
-              <Route path="/contracts" element={<Contracts cityFilter={cityFilter} />} />
-              <Route path="/collections" element={<Collections cityFilter={cityFilter} />} />
-              <Route path="/expenses" element={<Expenses cityFilter={cityFilter} />} />
-              <Route path="/revenue" element={<Revenue cityFilter={cityFilter} />} />
-              <Route path="/spare-parts" element={<SpareParts cityFilter={cityFilter} />} />
-              <Route path="/spare-parts/invoice" element={<SparePartsInvoice />} />
-              <Route path="/spare-parts/invoices/:id" element={<SparePartsInvoiceDetails />} />
-              <Route path="/payroll" element={<Payroll cityFilter={cityFilter} />} />
-              <Route path="/employees" element={<Employees cityFilter={cityFilter} />} />
-              <Route path="/employees/:id" element={<EmployeeProfile />} />
-              <Route path="/services" element={<Services />} />
+              <Route path="/" element={<ProtectedRoute permission="dashboard.view"><Dashboard cityFilter={cityFilter} /></ProtectedRoute>} />
+              <Route path="/analytics" element={<ProtectedRoute permission="analytics.view"><Analytics cityFilter={cityFilter} /></ProtectedRoute>} />
+              <Route path="/clients" element={<ProtectedRoute permission="clients.view"><Clients cityFilter={cityFilter} /></ProtectedRoute>} />
+              <Route path="/clients/:id" element={<ProtectedRoute permission="clients.view"><ClientProfile /></ProtectedRoute>} />
+              <Route path="/quotations" element={<ProtectedRoute permission="quotations.view"><Quotations cityFilter={cityFilter} /></ProtectedRoute>} />
+              <Route path="/quotations/:id" element={<ProtectedRoute permission="quotations.view"><QuotationDetails /></ProtectedRoute>} />
+              <Route path="/contracts" element={<ProtectedRoute permission="contracts.view"><Contracts cityFilter={cityFilter} /></ProtectedRoute>} />
+              <Route path="/collections" element={<ProtectedRoute permission="collections.view"><Collections cityFilter={cityFilter} /></ProtectedRoute>} />
+              <Route path="/expenses" element={<ProtectedRoute permission="expenses.view"><Expenses cityFilter={cityFilter} /></ProtectedRoute>} />
+              <Route path="/revenue" element={<ProtectedRoute permission="revenue.view"><Revenue cityFilter={cityFilter} /></ProtectedRoute>} />
+              <Route path="/spare-parts" element={<ProtectedRoute permission="spare_parts.view"><SpareParts cityFilter={cityFilter} /></ProtectedRoute>} />
+              <Route path="/spare-parts/invoice" element={<ProtectedRoute permission="spare_parts.view"><SparePartsInvoice /></ProtectedRoute>} />
+              <Route path="/spare-parts/invoices/:id" element={<ProtectedRoute permission="spare_parts.view"><SparePartsInvoiceDetails /></ProtectedRoute>} />
+              <Route path="/payroll" element={<ProtectedRoute permission="payroll.view"><Payroll cityFilter={cityFilter} /></ProtectedRoute>} />
+              <Route path="/employees" element={<ProtectedRoute permission="employees.view"><Employees cityFilter={cityFilter} /></ProtectedRoute>} />
+              <Route path="/employees/:id" element={<ProtectedRoute permission="employees.view"><EmployeeProfile /></ProtectedRoute>} />
+              <Route path="/services" element={<ProtectedRoute permission="services.view"><Services /></ProtectedRoute>} />
               <Route path="/users" element={
                 <ProtectedRoute adminOnly>
                   <Users />
                 </ProtectedRoute>
               } />
               <Route path="/notifications" element={<Notifications />} />
-              <Route path="/activity-log" element={<ActivityLog cityFilter={cityFilter} />} />
+              <Route path="/activity-log" element={<ProtectedRoute permission="activity_log.view"><ActivityLog cityFilter={cityFilter} /></ProtectedRoute>} />
               <Route path="/integrations" element={
                 <ProtectedRoute adminOnly>
                   <Integrations />

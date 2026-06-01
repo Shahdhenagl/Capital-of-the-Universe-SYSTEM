@@ -3,6 +3,29 @@ import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext({});
 
+const DEFAULT_ROLE_PERMISSIONS = {
+  accountant: {
+    'dashboard.view': true,
+    'analytics.view': true,
+    'clients.view': true,
+    'quotations.view': true,
+    'contracts.view': true,
+    'collections.view': true,
+    'expenses.view': true,
+    'revenue.view': true,
+    'spare_parts.view': true,
+    'payroll.view': true,
+    'services.view': true
+  },
+  viewer: {
+    'dashboard.view': true,
+    'clients.view': true,
+    'quotations.view': true,
+    'contracts.view': true,
+    'collections.view': true
+  }
+};
+
 export function useAuth() {
   return useContext(AuthContext);
 }
@@ -84,6 +107,16 @@ export function AuthProvider({ children }) {
     return data;
   }
 
+  function hasPermission(permissionKey) {
+    if (!permissionKey) return true;
+    if (profile?.role === 'admin') return true;
+    const storedPermissions = profile?.permissions || {};
+    const permissions = Object.keys(storedPermissions).length > 0
+      ? storedPermissions
+      : DEFAULT_ROLE_PERMISSIONS[profile?.role] || {};
+    return permissions[permissionKey] === true;
+  }
+
   const value = {
     user,
     profile,
@@ -91,6 +124,7 @@ export function AuthProvider({ children }) {
     login,
     logout,
     createUser,
+    hasPermission,
     isAdmin: profile?.role === 'admin',
     isAccountant: profile?.role === 'accountant' || profile?.role === 'admin',
     canEdit: profile?.role === 'admin' || profile?.role === 'accountant',

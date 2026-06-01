@@ -15,11 +15,14 @@ CREATE TABLE profiles (
   email TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'viewer' CHECK (role IN ('admin', 'accountant', 'viewer')),
   branch TEXT NOT NULL DEFAULT 'all' CHECK (branch IN ('mecca', 'jeddah', 'all')),
+  permissions JSONB DEFAULT '{}'::jsonb,
   phone TEXT,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '{}'::jsonb;
 
 -- ==============================================
 -- 2. جدول العملاء
@@ -181,7 +184,7 @@ CREATE TABLE contracts (
 -- ==============================================
 CREATE TABLE collection_schedule (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  contract_id UUID NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+  contract_id UUID REFERENCES contracts(id) ON DELETE SET NULL,
   client_id UUID NOT NULL REFERENCES clients(id),
   due_date DATE NOT NULL,
   amount NUMERIC(12,2) NOT NULL,
@@ -194,6 +197,8 @@ CREATE TABLE collection_schedule (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE collection_schedule ALTER COLUMN contract_id DROP NOT NULL;
 
 -- ==============================================
 -- 11. جدول التحصيلات

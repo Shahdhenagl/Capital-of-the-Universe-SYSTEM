@@ -82,6 +82,31 @@ function ClientProfile() {
   const [showSiteModal, setShowSiteModal] = useState(false);
   const [editingSite, setEditingSite] = useState(null);
   const [savingSite, setSavingSite] = useState(false);
+  const [quickModal, setQuickModal] = useState(null);
+  const [savingQuick, setSavingQuick] = useState(false);
+  const [payingCollection, setPayingCollection] = useState(null);
+  const [quickForm, setQuickForm] = useState({
+    title: '',
+    service_type: 'تركيب مصاعد',
+    amount: '',
+    description: '',
+    contract_type: 'maintenance',
+    contract_id: '',
+    contract_number: '',
+    payment_frequency: 'one_time',
+    payment_method: 'cash',
+    start_date: new Date().toISOString().slice(0, 10),
+    end_date: '',
+    due_date: new Date().toISOString().slice(0, 10),
+    collected_amount: '',
+    notes: ''
+  });
+  const [paymentForm, setPaymentForm] = useState({
+    amount: '',
+    payment_method: 'cash',
+    collected_date: new Date().toISOString().slice(0, 10),
+    notes: ''
+  });
   const [siteForm, setSiteForm] = useState({
     site_name: '',
     address: '',
@@ -192,7 +217,7 @@ function ClientProfile() {
     try {
       const { data, error } = await supabase
         .from('collection_schedule')
-        .select('*')
+        .select('*, contracts(contract_number, title)')
         .eq('client_id', id)
         .order('due_date', { ascending: false });
       if (error) throw error;
@@ -326,6 +351,221 @@ function ClientProfile() {
     } catch (err) {
       console.error('خطأ في حذف الموقع:', err);
       alert('حدث خطأ أثناء حذف الموقع');
+    }
+  }
+
+  function resetQuickForm(type = null) {
+    const today = new Date().toISOString().slice(0, 10);
+    setQuickForm({
+      title: '',
+      service_type: type === 'contract' ? 'صيانة مصاعد' : 'تركيب مصاعد',
+      amount: '',
+      description: '',
+      contract_type: 'maintenance',
+      contract_id: '',
+      contract_number: '',
+      payment_frequency: 'one_time',
+      payment_method: 'cash',
+      start_date: today,
+      end_date: '',
+      due_date: today,
+      collected_amount: '',
+      notes: ''
+    });
+  }
+
+  function openQuickModal(type) {
+    resetQuickForm(type);
+    setQuickModal(type);
+  }
+
+  function closeQuickModal() {
+    setQuickModal(null);
+    setSavingQuick(false);
+  }
+
+  async function generatePrefixedNumber(table, field, prefix) {
+    const { data } = await supabase
+      .from(table)
+      .select(field)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    const last = data?.[0]?.[field] || '';
+    const lastNum = parseInt(String(last).replace(prefix, ''), 10) || 0;
+    return `${prefix}${String(lastNum + 1).padStart(5, '0')}`;
+  }
+
+  async function handleSaveQuick(e) {
+    e.preventDefault();
+    setSavingQuick(true);
+    try {
+      const branch = client.city || profile?.branch || 'mecca';
+      const amount = parseFloat(quickForm.amount) || 0;
+
+      if (quickModal === 'quotation') {
+        const quotationNumber = await generatePrefixedNumber('quotations', 'quotation_number', 'QT');
+        const { error } = await supabase.from('quotations').insert({
+          quotation_number: quotationNumber,
+          client_id: id,
+          service_type: quickForm.service_type,
+          title: quickForm.title || quickForm.service_type,
+          description: quickForm.description,
+          amount,
+          status: 'pending',
+          branch,
+          notes: quickForm.notes,
+          created_by: profile?.id
+        });
+        if (error) throw error;
+        await fetchQuotations();
+        setActiveTab('quotations');
+      }
+
+      if (quickModal === 'contract') {
+        const contractNumber = quickForm.contract_number || await generatePrefixedNumber('contracts', 'contract_number', 'CT');
+        const notesPayload = JSON.stringify({
+          plainNotes: quickForm.notes,
+          details: {
+            contract_type: quickForm.contract_type,
+            created_from_client_profile: true
+          }
+        });
+        const { data: contract, error } = await supabase.from('contracts').insert({
+          contract_number: contractNumber,
+          client_id: id,
+          service_type: quickForm.service_type,
+          title: quickForm.title || quickForm.service_type,
+          total_amount: amount,
+          payment_frequency: quickForm.payment_frequency,
+          payment_method: quickForm.payment_method,
+          installment_amount: amount,
+          start_date: quickForm.start_date,
+          end_date: quickForm.end_date || null,
+          status: 'active',
+          branch,
+          notes: notesPayload,
+          created_by: profile?.id
+        }).select().single();
+        if (error) throw error;
+
+        if (amount > 0) {
+          const { error: scheduleError } = await supabase.from('collection_schedule').insert({
+            contract_id: contract.id,
+            client_id: id,
+            due_date: quickForm.due_date || quickForm.start_date,
+            amount,
+            collected_amount: 0,
+            status: 'pending',
+            payment_method: quickForm.payment_method,
+            notes: 'دفعة عقد',
+            branch
+          });
+          if (scheduleError) throw scheduleError;
+        }
+        await Promise.all([fetchContracts(), fetchCollections()]);
+        setActiveTab('contracts');
+      }
+
+      if (quickModal === 'collection') {
+        const collectedAmount = parseFloat(quickForm.collected_amount) || 0;
+        const status = collectedAmount >= amount ? 'collected' : (collectedAmount > 0 ? 'partial' : 'pending');
+        const { data: schedule, error } = await supabase.from('collection_schedule').insert({
+          contract_id: quickForm.contract_id || null,
+          client_id: id,
+          due_date: quickForm.due_date,
+          amount,
+          collected_amount: collectedAmount,
+          collected_date: quickForm.collected_amount ? new Date().toISOString().slice(0, 10) : null,
+          payment_method: quickForm.payment_method,
+          status,
+          notes: quickForm.notes || 'تحصيل سابق/دفعة مضافة من ملف العميل',
+          branch
+        }).select().single();
+        if (error) throw error;
+        if (collectedAmount > 0) {
+          const { error: collectionError } = await supabase.from('collections').insert({
+            schedule_id: schedule.id,
+            contract_id: quickForm.contract_id || null,
+            client_id: id,
+            amount: collectedAmount,
+            payment_method: quickForm.payment_method,
+            collection_date: new Date().toISOString().slice(0, 10),
+            notes: quickForm.notes || 'تحصيل سابق/دفعة مضافة من ملف العميل',
+            branch,
+            collected_by: profile?.id,
+            collected_by_name: profile?.full_name
+          });
+          if (collectionError) throw collectionError;
+        }
+        await fetchCollections();
+        setActiveTab('collections');
+      }
+
+      closeQuickModal();
+    } catch (err) {
+      console.error('Error saving client quick action:', err);
+      alert(`حدث خطأ أثناء الحفظ: ${err.message || 'خطأ غير معروف'}`);
+    } finally {
+      setSavingQuick(false);
+    }
+  }
+
+  function openPayCollection(collection) {
+    const remaining = Math.max((parseFloat(collection.amount) || 0) - (parseFloat(collection.collected_amount) || 0), 0);
+    setPayingCollection(collection);
+    setPaymentForm({
+      amount: remaining ? String(remaining) : '',
+      payment_method: collection.payment_method || 'cash',
+      collected_date: new Date().toISOString().slice(0, 10),
+      notes: ''
+    });
+  }
+
+  async function handlePayCollection(e) {
+    e.preventDefault();
+    if (!payingCollection) return;
+    setSavingQuick(true);
+    try {
+      const paidNow = parseFloat(paymentForm.amount) || 0;
+      const previousPaid = parseFloat(payingCollection.collected_amount) || 0;
+      const newPaid = previousPaid + paidNow;
+      const amount = parseFloat(payingCollection.amount) || 0;
+      const status = newPaid >= amount ? 'collected' : 'partial';
+
+      const { error: updateError } = await supabase
+        .from('collection_schedule')
+        .update({
+          collected_amount: newPaid,
+          collected_date: paymentForm.collected_date,
+          payment_method: paymentForm.payment_method,
+          status,
+          notes: paymentForm.notes || payingCollection.notes
+        })
+        .eq('id', payingCollection.id);
+      if (updateError) throw updateError;
+
+      const { error: collectionError } = await supabase.from('collections').insert({
+        schedule_id: payingCollection.id,
+        contract_id: payingCollection.contract_id,
+        client_id: id,
+        amount: paidNow,
+        payment_method: paymentForm.payment_method,
+        collection_date: paymentForm.collected_date,
+        notes: paymentForm.notes,
+        branch: payingCollection.branch || client.city || 'mecca',
+        collected_by: profile?.id,
+        collected_by_name: profile?.full_name
+      });
+      if (collectionError) throw collectionError;
+
+      setPayingCollection(null);
+      await fetchCollections();
+      setActiveTab('collections');
+    } catch (err) {
+      console.error('Error paying collection:', err);
+      alert(`حدث خطأ أثناء تسجيل الدفع: ${err.message || 'خطأ غير معروف'}`);
+    } finally {
+      setSavingQuick(false);
     }
   }
 
@@ -467,6 +707,35 @@ function ClientProfile() {
         </div>
       </div>
 
+      <div className="card mb-24">
+        <div className="card-body">
+          <div className="flex-between">
+            <div>
+              <h3 className="font-bold">إجراءات سريعة على العميل</h3>
+              <p className="text-muted mt-8">أضيفي عرض سعر، عقد، أو دفعة مباشرة من ملف العميل</p>
+            </div>
+            <div className="flex gap-8">
+              <button className="btn btn-secondary" onClick={() => openQuickModal('quotation')}>
+                <Plus size={16} />
+                إضافة عرض سعر
+              </button>
+              <button className="btn btn-secondary" onClick={() => openQuickModal('contract')}>
+                <Plus size={16} />
+                إضافة عقد
+              </button>
+              <button className="btn btn-primary" onClick={() => openQuickModal('collection')}>
+                <DollarSign size={16} />
+                إضافة دفعة/استحقاق
+              </button>
+              <button className="btn btn-secondary" onClick={() => navigate(`/spare-parts/invoice?client_id=${id}`)}>
+                <FileText size={16} />
+                فاتورة قطع
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Tabs */}
       <div className="tabs">
         {tabs.map(tab => (
@@ -586,6 +855,7 @@ function ClientProfile() {
                         <th>الحالة</th>
                         <th>تاريخ التحصيل</th>
                         <th>طريقة الدفع</th>
+                        <th>إجراءات</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -606,6 +876,15 @@ function ClientProfile() {
                           </td>
                           <td>{c.collected_date ? formatDate(c.collected_date) : '-'}</td>
                           <td>{PAYMENT_METHODS[c.payment_method] || c.payment_method || '-'}</td>
+                          <td>
+                            {c.status !== 'collected' ? (
+                              <button className="btn btn-primary btn-sm" onClick={() => openPayCollection(c)}>
+                                دفع
+                              </button>
+                            ) : (
+                              <span className="text-muted">مدفوع</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -839,6 +1118,336 @@ function ClientProfile() {
           )}
         </div>
       </div>
+
+      {quickModal && (
+        <div className="modal-overlay" onClick={closeQuickModal}>
+          <div className="modal-content modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">
+                {quickModal === 'quotation' && 'إضافة عرض سعر للعميل'}
+                {quickModal === 'contract' && 'إضافة عقد للعميل'}
+                {quickModal === 'collection' && 'إضافة دفعة أو استحقاق قديم'}
+              </h2>
+              <button className="modal-close" onClick={closeQuickModal}>
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveQuick}>
+              <div className="modal-body">
+                {(quickModal === 'quotation' || quickModal === 'contract') && (
+                  <>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">العنوان *</label>
+                        <input
+                          className="form-input"
+                          value={quickForm.title}
+                          onChange={(e) => setQuickForm({ ...quickForm, title: e.target.value })}
+                          placeholder="مثال: عرض توريد وتركيب مصعد"
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">نوع الخدمة *</label>
+                        <input
+                          className="form-input"
+                          value={quickForm.service_type}
+                          onChange={(e) => setQuickForm({ ...quickForm, service_type: e.target.value })}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">القيمة *</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          value={quickForm.amount}
+                          onChange={(e) => setQuickForm({ ...quickForm, amount: e.target.value })}
+                          min="0"
+                          step="0.01"
+                          required
+                        />
+                      </div>
+                      {quickModal === 'contract' && (
+                        <div className="form-group">
+                          <label className="form-label">نوع العقد</label>
+                          <select
+                            className="form-select"
+                            value={quickForm.contract_type}
+                            onChange={(e) => setQuickForm({
+                              ...quickForm,
+                              contract_type: e.target.value,
+                              service_type: e.target.value === 'maintenance' ? 'صيانة مصاعد' : 'توريد وتركيب مصاعد'
+                            })}
+                          >
+                            <option value="maintenance">عقد صيانة</option>
+                            <option value="supply_install">توريد وتركيب</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {quickModal === 'quotation' && (
+                  <>
+                    <div className="form-group">
+                      <label className="form-label">الوصف</label>
+                      <textarea
+                        className="form-textarea"
+                        value={quickForm.description}
+                        onChange={(e) => setQuickForm({ ...quickForm, description: e.target.value })}
+                        rows={4}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">ملاحظات</label>
+                      <textarea
+                        className="form-textarea"
+                        value={quickForm.notes}
+                        onChange={(e) => setQuickForm({ ...quickForm, notes: e.target.value })}
+                        rows={3}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {quickModal === 'contract' && (
+                  <>
+                    <div className="form-row-3">
+                      <div className="form-group">
+                        <label className="form-label">تاريخ البداية *</label>
+                        <input
+                          type="date"
+                          className="form-input"
+                          value={quickForm.start_date}
+                          onChange={(e) => setQuickForm({ ...quickForm, start_date: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">تاريخ النهاية/التجديد</label>
+                        <input
+                          type="date"
+                          className="form-input"
+                          value={quickForm.end_date}
+                          onChange={(e) => setQuickForm({ ...quickForm, end_date: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">استحقاق أول دفعة</label>
+                        <input
+                          type="date"
+                          className="form-input"
+                          value={quickForm.due_date}
+                          onChange={(e) => setQuickForm({ ...quickForm, due_date: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">طريقة الدفع</label>
+                        <select
+                          className="form-select"
+                          value={quickForm.payment_method}
+                          onChange={(e) => setQuickForm({ ...quickForm, payment_method: e.target.value })}
+                        >
+                          {Object.entries(PAYMENT_METHODS).map(([key, val]) => (
+                            <option key={key} value={key}>{val}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">دورية الدفع</label>
+                        <select
+                          className="form-select"
+                          value={quickForm.payment_frequency}
+                          onChange={(e) => setQuickForm({ ...quickForm, payment_frequency: e.target.value })}
+                        >
+                          <option value="one_time">دفعة واحدة</option>
+                          <option value="monthly">شهري</option>
+                          <option value="quarterly">ربع سنوي</option>
+                          <option value="semi_annual">نصف سنوي</option>
+                          <option value="annual">سنوي</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">ملاحظات العقد</label>
+                      <textarea
+                        className="form-textarea"
+                        value={quickForm.notes}
+                        onChange={(e) => setQuickForm({ ...quickForm, notes: e.target.value })}
+                        rows={3}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {quickModal === 'collection' && (
+                  <>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">العقد المرتبط</label>
+                        <select
+                          className="form-select"
+                          value={quickForm.contract_id}
+                          onChange={(e) => setQuickForm({ ...quickForm, contract_id: e.target.value })}
+                        >
+                          <option value="">بدون ربط عقد</option>
+                          {contracts.map(contract => (
+                            <option key={contract.id} value={contract.id}>
+                              {contract.contract_number || contract.title || contract.id.slice(0, 8)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">تاريخ الاستحقاق *</label>
+                        <input
+                          type="date"
+                          className="form-input"
+                          value={quickForm.due_date}
+                          onChange={(e) => setQuickForm({ ...quickForm, due_date: e.target.value })}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">قيمة الاستحقاق *</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          value={quickForm.amount}
+                          onChange={(e) => setQuickForm({ ...quickForm, amount: e.target.value })}
+                          min="0"
+                          step="0.01"
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">المدفوع فعليًا</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          value={quickForm.collected_amount}
+                          onChange={(e) => setQuickForm({ ...quickForm, collected_amount: e.target.value })}
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">طريقة الدفع</label>
+                        <select
+                          className="form-select"
+                          value={quickForm.payment_method}
+                          onChange={(e) => setQuickForm({ ...quickForm, payment_method: e.target.value })}
+                        >
+                          {Object.entries(PAYMENT_METHODS).map(([key, val]) => (
+                            <option key={key} value={key}>{val}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">ملاحظات</label>
+                        <input
+                          className="form-input"
+                          value={quickForm.notes}
+                          onChange={(e) => setQuickForm({ ...quickForm, notes: e.target.value })}
+                          placeholder="مثال: دفعة قديمة قبل استخدام النظام"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button type="submit" className="btn btn-primary" disabled={savingQuick}>
+                  {savingQuick ? 'جاري الحفظ...' : 'حفظ'}
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={closeQuickModal}>
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {payingCollection && (
+        <div className="modal-overlay" onClick={() => setPayingCollection(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">تسجيل دفع دفعة مستحقة</h2>
+              <button className="modal-close" onClick={() => setPayingCollection(null)}>
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handlePayCollection}>
+              <div className="modal-body">
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">المبلغ المدفوع *</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={paymentForm.amount}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">تاريخ الدفع</label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={paymentForm.collected_date}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, collected_date: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">طريقة الدفع</label>
+                    <select
+                      className="form-select"
+                      value={paymentForm.payment_method}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}
+                    >
+                      {Object.entries(PAYMENT_METHODS).map(([key, val]) => (
+                        <option key={key} value={key}>{val}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">ملاحظات</label>
+                    <input
+                      className="form-input"
+                      value={paymentForm.notes}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="submit" className="btn btn-primary" disabled={savingQuick}>
+                  {savingQuick ? 'جاري التسجيل...' : 'تسجيل الدفع'}
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => setPayingCollection(null)}>
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Add Site Modal */}
       {showSiteModal && (

@@ -3,6 +3,66 @@ import { supabase, ROLES, CITIES, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Shield, Plus, Search, Edit, X, UserCheck } from 'lucide-react';
 
+const PERMISSION_GROUPS = [
+  {
+    title: 'الرئيسية',
+    items: [
+      ['dashboard.view', 'لوحة التحكم'],
+      ['analytics.view', 'التحليلات']
+    ]
+  },
+  {
+    title: 'إدارة العملاء',
+    items: [
+      ['clients.view', 'العملاء'],
+      ['quotations.view', 'عروض الأسعار'],
+      ['contracts.view', 'العقود'],
+      ['collections.view', 'التحصيلات']
+    ]
+  },
+  {
+    title: 'المالية والمخزون',
+    items: [
+      ['expenses.view', 'المصروفات'],
+      ['revenue.view', 'الإيرادات'],
+      ['spare_parts.view', 'قطع الغيار'],
+      ['payroll.view', 'الرواتب والأجور']
+    ]
+  },
+  {
+    title: 'الإدارة',
+    items: [
+      ['employees.view', 'الموظفين'],
+      ['services.view', 'أنواع الخدمات'],
+      ['activity_log.view', 'سجل الأنشطة']
+    ]
+  }
+];
+
+const ROLE_PERMISSION_PRESETS = {
+  admin: Object.fromEntries(PERMISSION_GROUPS.flatMap(group => group.items).map(([key]) => [key, true])),
+  accountant: {
+    'dashboard.view': true,
+    'analytics.view': true,
+    'clients.view': true,
+    'quotations.view': true,
+    'contracts.view': true,
+    'collections.view': true,
+    'expenses.view': true,
+    'revenue.view': true,
+    'spare_parts.view': true,
+    'payroll.view': true,
+    'services.view': true
+  },
+  viewer: {
+    'dashboard.view': true,
+    'clients.view': true,
+    'quotations.view': true,
+    'contracts.view': true,
+    'collections.view': true
+  }
+};
+
 function UsersPage() {
   const { profile, createUser, isAdmin } = useAuth();
   const [users, setUsers] = useState([]);
@@ -16,7 +76,9 @@ function UsersPage() {
     email: '',
     password: '',
     role: 'viewer',
-    branch: 'all'
+    branch: 'all',
+    is_active: true,
+    permissions: ROLE_PERMISSION_PRESETS.viewer
   });
 
   useEffect(() => {
@@ -64,7 +126,9 @@ function UsersPage() {
       email: '',
       password: '',
       role: 'viewer',
-      branch: 'all'
+      branch: 'all',
+      is_active: true,
+      permissions: ROLE_PERMISSION_PRESETS.viewer
     });
     setShowModal(true);
   }
@@ -76,9 +140,32 @@ function UsersPage() {
       email: user.email || '',
       password: '',
       role: user.role || 'viewer',
-      branch: user.branch || 'all'
+      branch: user.branch || 'all',
+      is_active: user.is_active !== false,
+      permissions: {
+        ...(ROLE_PERMISSION_PRESETS[user.role || 'viewer'] || ROLE_PERMISSION_PRESETS.viewer),
+        ...(user.permissions || {})
+      }
     });
     setShowModal(true);
+  }
+
+  function applyRolePreset(role) {
+    setFormData(prev => ({
+      ...prev,
+      role,
+      permissions: ROLE_PERMISSION_PRESETS[role] || ROLE_PERMISSION_PRESETS.viewer
+    }));
+  }
+
+  function togglePermission(permissionKey) {
+    setFormData(prev => ({
+      ...prev,
+      permissions: {
+        ...prev.permissions,
+        [permissionKey]: !prev.permissions?.[permissionKey]
+      }
+    }));
   }
 
   async function handleSave(e) {
@@ -89,7 +176,9 @@ function UsersPage() {
         const updateData = {
           full_name: formData.full_name,
           role: formData.role,
-          branch: formData.branch
+          branch: formData.branch,
+          is_active: formData.is_active,
+          permissions: formData.permissions || {}
         };
 
         const { error } = await supabase
@@ -109,7 +198,8 @@ function UsersPage() {
         const { user: newUser } = await createUser(formData.email, formData.password, {
           full_name: formData.full_name,
           role: formData.role,
-          branch: formData.branch
+          branch: formData.branch,
+          permissions: formData.permissions || {}
         });
 
         if (newUser) {
@@ -118,7 +208,9 @@ function UsersPage() {
             full_name: formData.full_name,
             email: formData.email,
             role: formData.role,
-            branch: formData.branch
+            branch: formData.branch,
+            is_active: formData.is_active,
+            permissions: formData.permissions || {}
           });
         }
 
@@ -189,6 +281,7 @@ function UsersPage() {
                 <th>الاسم</th>
                 <th>البريد</th>
                 <th>الدور</th>
+                <th>الصلاحيات</th>
                 <th>الفرع</th>
                 <th>الحالة</th>
                 <th>إجراءات</th>
@@ -208,6 +301,15 @@ function UsersPage() {
                     <span className={getRoleBadge(user.role)}>
                       {ROLES[user.role] || user.role}
                     </span>
+                  </td>
+                  <td>
+                    {user.role === 'admin' ? (
+                      <span className="badge badge-danger">كل الصلاحيات</span>
+                    ) : (
+                      <span className="badge badge-info">
+                        {Object.values(user.permissions || {}).filter(Boolean).length} صلاحية
+                      </span>
+                    )}
                   </td>
                   <td>
                     {user.branch === 'all' ? 'جميع الفروع' : (CITIES[user.branch] || user.branch)}
@@ -234,7 +336,7 @@ function UsersPage() {
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content modal-lg" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">
                 {editingUser ? 'تعديل مستخدم' : 'إضافة مستخدم جديد'}
@@ -286,7 +388,7 @@ function UsersPage() {
                     <select
                       className="form-select"
                       value={formData.role}
-                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                      onChange={(e) => applyRolePreset(e.target.value)}
                       required
                     >
                       {Object.entries(ROLES).map(([key, val]) => (
@@ -307,6 +409,55 @@ function UsersPage() {
                         <option key={key} value={key}>{val}</option>
                       ))}
                     </select>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">حالة المستخدم</label>
+                  <select
+                    className="form-select"
+                    value={formData.is_active ? 'active' : 'inactive'}
+                    onChange={(e) => setFormData({ ...formData, is_active: e.target.value === 'active' })}
+                  >
+                    <option value="active">نشط</option>
+                    <option value="inactive">غير نشط</option>
+                  </select>
+                </div>
+
+                <div className="card mt-24">
+                  <div className="card-header">
+                    <h3 className="card-title">صلاحيات المستخدم</h3>
+                  </div>
+                  <div className="card-body">
+                    {formData.role === 'admin' ? (
+                      <div className="empty-state" style={{ padding: '24px' }}>
+                        <Shield size={40} />
+                        <h3>مدير النظام لديه كل الصلاحيات تلقائيًا</h3>
+                      </div>
+                    ) : (
+                      <div className="grid-2">
+                        {PERMISSION_GROUPS.map(group => (
+                          <div key={group.title} className="card">
+                            <div className="card-body">
+                              <h4 className="font-bold mb-16">{group.title}</h4>
+                              <div className="flex gap-12" style={{ flexDirection: 'column' }}>
+                                {group.items.map(([permissionKey, label]) => (
+                                  <label key={permissionKey} className="flex gap-8" style={{ alignItems: 'center', cursor: 'pointer' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={!!formData.permissions?.[permissionKey]}
+                                      onChange={() => togglePermission(permissionKey)}
+                                      style={{ width: '18px', height: '18px' }}
+                                    />
+                                    <span>{label}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

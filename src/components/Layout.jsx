@@ -10,32 +10,32 @@ import {
 
 const navItems = [
   { section: 'الرئيسية' },
-  { path: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
-  { path: '/analytics', label: 'التحليلات', icon: BarChart3 },
+  { path: '/', label: 'لوحة التحكم', icon: LayoutDashboard, permission: 'dashboard.view' },
+  { path: '/analytics', label: 'التحليلات', icon: BarChart3, permission: 'analytics.view' },
   
   { section: 'إدارة العملاء' },
-  { path: '/clients', label: 'العملاء', icon: Users },
-  { path: '/quotations', label: 'عروض الأسعار', icon: FileText },
-  { path: '/contracts', label: 'العقود', icon: FileCheck },
-  { path: '/collections', label: 'التحصيلات', icon: Wallet },
+  { path: '/clients', label: 'العملاء', icon: Users, permission: 'clients.view' },
+  { path: '/quotations', label: 'عروض الأسعار', icon: FileText, permission: 'quotations.view' },
+  { path: '/contracts', label: 'العقود', icon: FileCheck, permission: 'contracts.view' },
+  { path: '/collections', label: 'التحصيلات', icon: Wallet, permission: 'collections.view' },
   
   { section: 'المالية' },
-  { path: '/expenses', label: 'المصروفات', icon: TrendingDown },
-  { path: '/revenue', label: 'الإيرادات', icon: TrendingUp },
-  { path: '/spare-parts', label: 'قطع الغيار', icon: Package },
-  { path: '/payroll', label: 'الرواتب والأجور', icon: Coins },
+  { path: '/expenses', label: 'المصروفات', icon: TrendingDown, permission: 'expenses.view' },
+  { path: '/revenue', label: 'الإيرادات', icon: TrendingUp, permission: 'revenue.view' },
+  { path: '/spare-parts', label: 'قطع الغيار', icon: Package, permission: 'spare_parts.view' },
+  { path: '/payroll', label: 'الرواتب والأجور', icon: Coins, permission: 'payroll.view' },
   
   { section: 'الإدارة' },
-  { path: '/employees', label: 'الموظفين', icon: UserCog },
-  { path: '/services', label: 'أنواع الخدمات', icon: BriefcaseBusiness },
+  { path: '/employees', label: 'الموظفين', icon: UserCog, permission: 'employees.view' },
+  { path: '/services', label: 'أنواع الخدمات', icon: BriefcaseBusiness, permission: 'services.view' },
   { path: '/users', label: 'المستخدمين', icon: Shield, adminOnly: true },
-  { path: '/activity-log', label: 'سجل الأنشطة', icon: Activity },
+  { path: '/activity-log', label: 'سجل الأنشطة', icon: Activity, permission: 'activity_log.view' },
   { path: '/notifications', label: 'الإشعارات', icon: Bell },
   { path: '/integrations', label: 'التكاملات', icon: Plug, adminOnly: true },
 ];
 
 export default function Layout({ children, cityFilter, setCityFilter }) {
-  const { profile, logout, isAdmin } = useAuth();
+  const { profile, logout, isAdmin, hasPermission } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -151,6 +151,7 @@ export default function Layout({ children, cityFilter, setCityFilter }) {
               return <div key={idx} className="nav-section-title">{item.section}</div>;
             }
             if (item.adminOnly && !isAdmin) return null;
+            if (item.permission && !hasPermission(item.permission)) return null;
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             return (

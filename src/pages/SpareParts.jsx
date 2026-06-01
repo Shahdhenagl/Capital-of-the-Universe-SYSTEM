@@ -1,16 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, formatCurrency, CITIES, logActivity } from '../lib/supabase';
+import { supabase, formatCurrency, formatDateShort, CITIES, PAYMENT_METHODS, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Package, Plus, FileText, Search, Edit, Trash2, AlertTriangle, X } from 'lucide-react';
+import { Package, Plus, FileText, Search, Edit, Trash2, AlertTriangle, X, Eye, Download, Printer } from 'lucide-react';
 
 function SpareParts() {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const [parts, setParts] = useState([]);
+  const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
+  const [stockFilter, setStockFilter] = useState('');
+  const [invoiceSearch, setInvoiceSearch] = useState('');
+  const [invoiceBranchFilter, setInvoiceBranchFilter] = useState('');
+  const [invoicePaymentFilter, setInvoicePaymentFilter] = useState('');
+  const [invoiceDateFrom, setInvoiceDateFrom] = useState('');
+  const [invoiceDateTo, setInvoiceDateTo] = useState('');
+  const [printReportActive, setPrintReportActive] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingPart, setEditingPart] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -28,6 +36,7 @@ function SpareParts() {
 
   useEffect(() => {
     fetchParts();
+    fetchInvoices();
   }, []);
 
   async function fetchParts() {
@@ -47,22 +56,93 @@ function SpareParts() {
     }
   }
 
+  async function fetchInvoices() {
+    try {
+      const { data, error } = await supabase
+        .from('spare_parts_invoices')
+        .select('*, clients(name, phone)')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setInvoices(data || []);
+    } catch (err) {
+      console.error('Error fetching spare parts invoices:', err);
+    }
+  }
+
   const filteredParts = parts.filter(part => {
     const matchesSearch = !searchTerm ||
       part.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       part.part_number?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesBranch = !branchFilter || part.branch === branchFilter;
-    return matchesSearch && matchesBranch;
+    const matchesStock = !stockFilter ||
+      (stockFilter === 'low' && part.quantity <= (part.min_quantity || 0)) ||
+      (stockFilter === 'available' && part.quantity > (part.min_quantity || 0)) ||
+      (stockFilter === 'out' && part.quantity <= 0);
+    return matchesSearch && matchesBranch && matchesStock;
+  });
+
+  const filteredInvoices = invoices.filter(invoice => {
+    const query = invoiceSearch.toLowerCase();
+    const invoiceDate = invoice.created_at ? new Date(invoice.created_at) : null;
+    const fromDate = invoiceDateFrom ? new Date(`${invoiceDateFrom}T00:00:00`) : null;
+    const toDate = invoiceDateTo ? new Date(`${invoiceDateTo}T23:59:59`) : null;
+    const matchesSearch = !query ||
+      invoice.invoice_number?.toLowerCase().includes(query) ||
+      invoice.clients?.name?.toLowerCase().includes(query) ||
+      invoice.clients?.phone?.toLowerCase().includes(query) ||
+      invoice.notes?.toLowerCase().includes(query);
+    const matchesBranch = !invoiceBranchFilter || invoice.branch === invoiceBranchFilter;
+    const matchesPayment = !invoicePaymentFilter || invoice.payment_method === invoicePaymentFilter;
+    const matchesFrom = !fromDate || (invoiceDate && invoiceDate >= fromDate);
+    const matchesTo = !toDate || (invoiceDate && invoiceDate <= toDate);
+    return matchesSearch && matchesBranch && matchesPayment && matchesFrom && matchesTo;
   });
 
   const totalParts = parts.length;
   const inventoryValue = parts.reduce((sum, p) => sum + (p.buy_price || 0) * (p.quantity || 0), 0);
   const expectedProfit = parts.reduce((sum, p) => sum + ((p.sell_price || 0) - (p.buy_price || 0)) * (p.quantity || 0), 0);
   const lowStockCount = parts.filter(p => p.quantity <= (p.min_quantity || 0)).length;
+  const invoiceSalesTotal = filteredInvoices.reduce((sum, invoice) => sum + (Number(invoice.total_amount) || 0), 0);
+  const invoiceCostTotal = filteredInvoices.reduce((sum, invoice) => sum + (Number(invoice.total_cost) || 0), 0);
+  const invoiceProfitTotal = filteredInvoices.reduce((sum, invoice) => sum + (Number(invoice.total_profit) || 0), 0);
 
   function getMargin(part) {
     if (!part.buy_price || part.buy_price === 0) return '0%';
     return ((part.sell_price - part.buy_price) / part.buy_price * 100).toFixed(1) + '%';
+  }
+
+  function exportInvoicesCsv() {
+    const headers = ['رقم الفاتورة', 'العميل', 'الجوال', 'الفرع', 'طريقة الدفع', 'إجمالي البيع', 'التكلفة', 'الربح', 'التاريخ', 'ملاحظات'];
+    const rows = filteredInvoices.map(invoice => [
+      invoice.invoice_number || '',
+      invoice.clients?.name || '',
+      invoice.clients?.phone || '',
+      CITIES[invoice.branch] || invoice.branch || '',
+      PAYMENT_METHODS[invoice.payment_method] || invoice.payment_method || '',
+      invoice.total_amount || 0,
+      invoice.total_cost || 0,
+      invoice.total_profit || 0,
+      formatDateShort(invoice.created_at),
+      invoice.notes || ''
+    ]);
+    const escapeCell = (value) => `"${String(value).replace(/"/g, '""')}"`;
+    const csv = [headers, ...rows].map(row => row.map(escapeCell).join(',')).join('\n');
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `spare-parts-invoices-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function printInvoicesReport() {
+    setPrintReportActive(true);
+    setTimeout(() => {
+      window.print();
+      setPrintReportActive(false);
+    }, 100);
   }
 
   function openAddModal() {
@@ -244,6 +324,16 @@ function SpareParts() {
               <option key={key} value={key}>{val}</option>
             ))}
           </select>
+          <select
+            className="form-select"
+            value={stockFilter}
+            onChange={(e) => setStockFilter(e.target.value)}
+          >
+            <option value="">كل حالات المخزون</option>
+            <option value="low">قرب ينفذ</option>
+            <option value="out">نفد المخزون</option>
+            <option value="available">متوفر</option>
+          </select>
         </div>
       </div>
 
@@ -304,6 +394,170 @@ function SpareParts() {
             </tbody>
           </table>
         )}
+      </div>
+
+      <div className="card mt-24">
+        <div className="card-header">
+          <div>
+            <h2 className="card-title">فواتير بيع قطع الغيار</h2>
+            <p className="text-muted">بحث، فلترة، تصدير ومراجعة كل فواتير بيع القطع</p>
+          </div>
+          <div className="flex gap-8">
+            <button className="btn btn-secondary" onClick={exportInvoicesCsv} disabled={filteredInvoices.length === 0}>
+              <Download size={18} />
+              تصدير CSV
+            </button>
+            <button className="btn btn-secondary" onClick={printInvoicesReport} disabled={filteredInvoices.length === 0}>
+              <Printer size={18} />
+              طباعة التقرير
+            </button>
+            <button className="btn btn-primary" onClick={() => navigate('/spare-parts/invoice')}>
+              <Plus size={18} />
+              فاتورة جديدة
+            </button>
+          </div>
+        </div>
+
+        <div className="stats-grid mt-16">
+          <div className="stat-card primary">
+            <div className="stat-info">
+              <div className="stat-label">عدد الفواتير</div>
+              <div className="stat-value">{filteredInvoices.length}</div>
+            </div>
+            <div className="stat-icon primary">
+              <FileText size={26} />
+            </div>
+          </div>
+          <div className="stat-card success">
+            <div className="stat-info">
+              <div className="stat-label">إجمالي المبيعات</div>
+              <div className="stat-value">{formatCurrency(invoiceSalesTotal)}</div>
+            </div>
+            <div className="stat-icon success">
+              <FileText size={26} />
+            </div>
+          </div>
+          <div className="stat-card warning">
+            <div className="stat-info">
+              <div className="stat-label">إجمالي التكلفة</div>
+              <div className="stat-value">{formatCurrency(invoiceCostTotal)}</div>
+            </div>
+            <div className="stat-icon warning">
+              <Package size={26} />
+            </div>
+          </div>
+          <div className="stat-card info">
+            <div className="stat-info">
+              <div className="stat-label">صافي الربح</div>
+              <div className="stat-value">{formatCurrency(invoiceProfitTotal)}</div>
+            </div>
+            <div className="stat-icon info">
+              <FileText size={26} />
+            </div>
+          </div>
+        </div>
+
+        <div className="filter-bar mt-16">
+          <div className="search-wrapper">
+            <Search size={18} className="search-icon" />
+            <input
+              type="text"
+              className="search-input"
+              placeholder="بحث برقم الفاتورة أو العميل أو الجوال..."
+              value={invoiceSearch}
+              onChange={(e) => setInvoiceSearch(e.target.value)}
+            />
+          </div>
+          <div className="filter-group">
+            <select
+              className="form-select"
+              value={invoiceBranchFilter}
+              onChange={(e) => setInvoiceBranchFilter(e.target.value)}
+            >
+              <option value="">كل الفروع</option>
+              {Object.entries(CITIES).map(([key, val]) => (
+                <option key={key} value={key}>{val}</option>
+              ))}
+            </select>
+            <select
+              className="form-select"
+              value={invoicePaymentFilter}
+              onChange={(e) => setInvoicePaymentFilter(e.target.value)}
+            >
+              <option value="">كل طرق الدفع</option>
+              {Object.entries(PAYMENT_METHODS).map(([key, val]) => (
+                <option key={key} value={key}>{val}</option>
+              ))}
+            </select>
+            <input
+              type="date"
+              className="form-input"
+              value={invoiceDateFrom}
+              onChange={(e) => setInvoiceDateFrom(e.target.value)}
+            />
+            <input
+              type="date"
+              className="form-input"
+              value={invoiceDateTo}
+              onChange={(e) => setInvoiceDateTo(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="table-container">
+          {filteredInvoices.length === 0 ? (
+            <div className="empty-state">
+              <FileText size={48} className="text-muted" />
+              <h3>لا توجد فواتير بيع قطع</h3>
+              <p>أنشئي فاتورة بيع جديدة أو غيّري الفلاتر الحالية</p>
+            </div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>رقم الفاتورة</th>
+                  <th>العميل</th>
+                  <th>الجوال</th>
+                  <th>الفرع</th>
+                  <th>طريقة الدفع</th>
+                  <th>إجمالي البيع</th>
+                  <th>التكلفة</th>
+                  <th>الربح</th>
+                  <th>التاريخ</th>
+                  <th>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredInvoices.map(invoice => (
+                  <tr key={invoice.id}>
+                    <td className="font-semibold">{invoice.invoice_number || invoice.id?.slice(0, 8)}</td>
+                    <td>{invoice.clients?.name || 'عميل غير محدد'}</td>
+                    <td>{invoice.clients?.phone || '—'}</td>
+                    <td>{CITIES[invoice.branch] || invoice.branch || '—'}</td>
+                    <td>{PAYMENT_METHODS[invoice.payment_method] || invoice.payment_method || '—'}</td>
+                    <td>{formatCurrency(invoice.total_amount)}</td>
+                    <td>{formatCurrency(invoice.total_cost)}</td>
+                    <td>
+                      <span className={(invoice.total_profit || 0) >= 0 ? 'text-success font-semibold' : 'text-danger font-semibold'}>
+                        {formatCurrency(invoice.total_profit)}
+                      </span>
+                    </td>
+                    <td>{formatDateShort(invoice.created_at)}</td>
+                    <td>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => navigate(`/spare-parts/invoices/${invoice.id}`)}
+                        title="عرض وطباعة الفاتورة"
+                      >
+                        <Eye size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
       {showModal && (
@@ -434,6 +688,61 @@ function SpareParts() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {printReportActive && (
+        <div className="print-only-container">
+          <div className="print-header">
+            <div className="print-logo-section">
+              <h1>تقرير فواتير بيع قطع الغيار</h1>
+            </div>
+          </div>
+          <div className="print-title">كشف فواتير بيع قطع الغيار</div>
+          <div className="print-meta-grid">
+            <div className="print-meta-item">
+              <span>عدد الفواتير</span>
+              <strong>{filteredInvoices.length}</strong>
+            </div>
+            <div className="print-meta-item">
+              <span>إجمالي المبيعات</span>
+              <strong>{formatCurrency(invoiceSalesTotal)}</strong>
+            </div>
+            <div className="print-meta-item">
+              <span>إجمالي التكلفة</span>
+              <strong>{formatCurrency(invoiceCostTotal)}</strong>
+            </div>
+            <div className="print-meta-item">
+              <span>صافي الربح</span>
+              <strong>{formatCurrency(invoiceProfitTotal)}</strong>
+            </div>
+          </div>
+          <table className="print-table">
+            <thead>
+              <tr>
+                <th>رقم الفاتورة</th>
+                <th>العميل</th>
+                <th>الفرع</th>
+                <th>طريقة الدفع</th>
+                <th>إجمالي البيع</th>
+                <th>الربح</th>
+                <th>التاريخ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredInvoices.map(invoice => (
+                <tr key={invoice.id}>
+                  <td>{invoice.invoice_number || invoice.id?.slice(0, 8)}</td>
+                  <td>{invoice.clients?.name || '-'}</td>
+                  <td>{CITIES[invoice.branch] || invoice.branch || '-'}</td>
+                  <td>{PAYMENT_METHODS[invoice.payment_method] || invoice.payment_method || '-'}</td>
+                  <td>{formatCurrency(invoice.total_amount)}</td>
+                  <td>{formatCurrency(invoice.total_profit)}</td>
+                  <td>{formatDateShort(invoice.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

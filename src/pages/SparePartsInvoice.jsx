@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase, formatCurrency, CITIES, PAYMENT_METHODS, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { FileText, Plus, Trash2, Save, ArrowRight, Package, DollarSign } from 'lucide-react';
@@ -8,6 +8,7 @@ import { notifyIntegrations } from '../lib/integrations';
 function SparePartsInvoice() {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [clients, setClients] = useState([]);
   const [spareParts, setSpareParts] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -24,6 +25,14 @@ function SparePartsInvoice() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const selectedClient = params.get('client_id');
+    if (selectedClient) {
+      setClientId(selectedClient);
+    }
+  }, [location.search]);
 
   async function fetchData() {
     try {
