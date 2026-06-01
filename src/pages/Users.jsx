@@ -214,8 +214,8 @@ function UsersPage() {
                   </td>
                   <td>
                     <div className="flex gap-8">
-                      <span className={`status-dot ${user.status === 'inactive' ? 'inactive' : 'active'}`}></span>
-                      {user.status === 'inactive' ? 'غير نشط' : 'نشط'}
+                      <span className={`status-dot ${user.is_active === false ? 'inactive' : 'active'}`}></span>
+                      {user.is_active === false ? 'غير نشط' : 'نشط'}
                     </div>
                   </td>
                   <td>
