@@ -191,6 +191,8 @@ function QuotationDetails() {
           contract_number: contractNumber,
           client_id: quotation.client_id,
           quotation_id: id,
+          service_type: quotation.service_type || quotation.title || 'عرض سعر',
+          title: quotation.title || quotation.service_type || 'عقد من عرض سعر',
           total_amount: parseFloat(contractForm.total_amount),
           payment_frequency: contractForm.payment_frequency,
           payment_method: contractForm.payment_method,
@@ -245,7 +247,7 @@ function QuotationDetails() {
       fetchQuotation();
     } catch (err) {
       console.error('خطأ في قبول العرض:', err);
-      alert('حدث خطأ أثناء قبول عرض السعر');
+      alert(`حدث خطأ أثناء قبول عرض السعر: ${err.message || 'خطأ غير معروف'}`);
     } finally {
       setSavingContract(false);
     }

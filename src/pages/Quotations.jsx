@@ -480,6 +480,8 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
           contract_number: contractNumber,
           client_id: selectedQuotation.client_id,
           quotation_id: selectedQuotation.id,
+          service_type: selectedQuotation.service_type || selectedQuotation.title || 'عرض سعر',
+          title: selectedQuotation.title || selectedQuotation.service_type || 'عقد من عرض سعر',
           total_amount: parseFloat(contractForm.total_amount),
           payment_frequency: contractForm.payment_frequency,
           payment_method: contractForm.payment_method,
@@ -535,7 +537,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
       fetchQuotations();
     } catch (err) {
       console.error('خطأ في قبول العرض:', err);
-      alert('حدث خطأ أثناء قبول عرض السعر وإنشاء العقد');
+      alert(`حدث خطأ أثناء قبول عرض السعر وإنشاء العقد: ${err.message || 'خطأ غير معروف'}`);
     } finally {
       setSavingContract(false);
     }
