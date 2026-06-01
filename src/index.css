@@ -1051,6 +1051,8 @@ a:hover {
 .client-card.status-good::before { background: var(--success); }
 .client-card.status-pending::before { background: var(--warning); }
 .client-card.status-overdue::before { background: var(--danger); }
+.client-card.inactive::before { background: var(--text-tertiary); }
+.client-card.inactive { opacity: 0.75; }
 
 .client-card:hover {
   transform: translateY(-2px);

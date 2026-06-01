@@ -69,6 +69,7 @@ function Quotations() {
       const { data, error } = await supabase
         .from('clients')
         .select('id, name, phone, city')
+        .neq('status', 'inactive')
         .order('name');
       if (error) throw error;
       setClients(data || []);

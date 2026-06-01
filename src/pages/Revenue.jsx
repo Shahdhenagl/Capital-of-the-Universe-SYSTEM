@@ -78,6 +78,7 @@ function Revenue() {
       const { data, error } = await supabase
         .from('clients')
         .select('id, name')
+        .neq('status', 'inactive')
         .order('name');
 
       if (error) throw error;

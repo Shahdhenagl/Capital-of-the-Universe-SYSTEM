@@ -29,7 +29,7 @@ function SparePartsInvoice() {
     try {
       setLoading(true);
       const [clientsRes, partsRes] = await Promise.all([
-        supabase.from('clients').select('id, name').order('name'),
+        supabase.from('clients').select('id, name').neq('status', 'inactive').order('name'),
         supabase.from('spare_parts').select('*').gt('quantity', 0).order('name')
       ]);
       setClients(clientsRes.data || []);

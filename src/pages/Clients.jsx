@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, formatCurrency, CITIES, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Users, Plus, Upload, Search, Phone, MapPin, DollarSign, X, MessageCircle, Navigation } from 'lucide-react';
+import { Users, Plus, Upload, Search, Phone, MapPin, DollarSign, X, MessageCircle, Navigation, Edit, UserCheck, UserX } from 'lucide-react';
 import { formatSaudiLocalPhoneInput, isValidSaudiLocalPhone, openGoogleMaps, openWhatsApp } from '../lib/integrations';
 import Papa from 'papaparse';
 
@@ -14,8 +14,10 @@ function Clients() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [cityFilter, setCityFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('active');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCsvModal, setShowCsvModal] = useState(false);
+  const [editingClient, setEditingClient] = useState(null);
   const [saving, setSaving] = useState(false);
 
   // Add client form
@@ -26,7 +28,8 @@ function Clients() {
     address: '',
     city: 'mecca',
     contact_person: '',
-    notes: ''
+    notes: '',
+    status: 'active'
   });
 
   // CSV state
@@ -61,11 +64,13 @@ function Clients() {
       (client.phone && client.phone.includes(searchTerm));
 
     const matchesCity = cityFilter === 'all' || client.city === cityFilter;
+    const matchesStatus = statusFilter === 'all' || (client.status || 'active') === statusFilter;
 
-    return matchesSearch && matchesCity;
+    return matchesSearch && matchesCity && matchesStatus;
   });
 
   function getClientStatus(client) {
+    if ((client.status || 'active') === 'inactive') return 'inactive';
     const due = client.total_due || 0;
     if (due === 0) return 'status-good';
     if (due > 0) return 'status-pending';
@@ -97,11 +102,40 @@ function Clients() {
       address: '',
       city: 'mecca',
       contact_person: '',
-      notes: ''
+      notes: '',
+      status: 'active'
     });
   }
 
-  async function handleAddClient(e) {
+  function openAddModal() {
+    setEditingClient(null);
+    resetForm();
+    setShowAddModal(true);
+  }
+
+  function openEditModal(event, client) {
+    event.stopPropagation();
+    setEditingClient(client);
+    setForm({
+      name: client.name || '',
+      phone: formatSaudiLocalPhoneInput(client.phone || ''),
+      email: client.email || '',
+      address: client.address || '',
+      city: client.city || 'mecca',
+      contact_person: client.contact_person || '',
+      notes: client.notes || '',
+      status: client.status || 'active'
+    });
+    setShowAddModal(true);
+  }
+
+  function closeClientModal() {
+    setShowAddModal(false);
+    setEditingClient(null);
+    resetForm();
+  }
+
+  async function handleSaveClient(e) {
     e.preventDefault();
     if (!form.name || !form.phone) return;
     if (!isValidSaudiLocalPhone(form.phone)) {
@@ -111,40 +145,73 @@ function Clients() {
 
     try {
       setSaving(true);
-      const { data, error } = await supabase
-        .from('clients')
-        .insert({
-          name: form.name,
-          phone: form.phone,
-          email: form.email || null,
-          address: form.address || null,
-          city: form.city,
-          contact_person: form.contact_person || null,
-          notes: form.notes || null
-        })
-        .select()
-        .single();
+      const payload = {
+        name: form.name,
+        phone: form.phone,
+        email: form.email || null,
+        address: form.address || null,
+        city: form.city,
+        contact_person: form.contact_person || null,
+        notes: form.notes || null,
+        status: form.status || 'active'
+      };
+
+      const query = editingClient
+        ? supabase.from('clients').update(payload).eq('id', editingClient.id).select().single()
+        : supabase.from('clients').insert(payload).select().single();
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
       await logActivity(
         profile?.id,
         profile?.full_name,
-        'إضافة عميل',
+        editingClient ? 'تعديل عميل' : 'إضافة عميل',
         'clients',
         data?.id,
-        `تم إضافة العميل: ${form.name}`,
+        `${editingClient ? 'تم تعديل بيانات العميل' : 'تم إضافة العميل'}: ${form.name}`,
         profile?.branch
       );
 
-      resetForm();
-      setShowAddModal(false);
+      closeClientModal();
       fetchClients();
     } catch (err) {
-      console.error('خطأ في إضافة العميل:', err);
-      alert('حدث خطأ أثناء إضافة العميل');
+      console.error('خطأ في حفظ العميل:', err);
+      alert('حدث خطأ أثناء حفظ بيانات العميل');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function toggleClientStatus(event, client) {
+    event.stopPropagation();
+    const nextStatus = (client.status || 'active') === 'inactive' ? 'active' : 'inactive';
+    const actionText = nextStatus === 'inactive' ? 'تعطيل' : 'تنشيط';
+    if (!window.confirm(`هل تريد ${actionText} العميل "${client.name}"؟`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({ status: nextStatus })
+        .eq('id', client.id);
+
+      if (error) throw error;
+
+      await logActivity(
+        profile?.id,
+        profile?.full_name,
+        `${actionText} عميل`,
+        'clients',
+        client.id,
+        `تم ${actionText} العميل: ${client.name}`,
+        profile?.branch
+      );
+
+      fetchClients();
+    } catch (err) {
+      console.error('خطأ في تحديث حالة العميل:', err);
+      alert('حدث خطأ أثناء تحديث حالة العميل');
     }
   }
 
@@ -178,7 +245,8 @@ function Clients() {
         address: row.address || row['العنوان'] || null,
         city: row.city || row['المدينة'] || 'mecca',
         contact_person: row.contact_person || row['جهة الاتصال'] || null,
-        notes: row.notes || row['ملاحظات'] || null
+        notes: row.notes || row['ملاحظات'] || null,
+        status: 'active'
       })).filter(r => r.name && isValidSaudiLocalPhone(r.phone));
 
       if (rows.length === 0) {
@@ -230,7 +298,7 @@ function Clients() {
           العملاء
         </h1>
         <div className="page-actions">
-          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+          <button className="btn btn-primary" onClick={openAddModal}>
             <Plus size={18} />
             إضافة عميل
           </button>
@@ -273,6 +341,26 @@ function Clients() {
             جدة
           </button>
         </div>
+        <div className="filter-group">
+          <button
+            className={`city-filter-btn ${statusFilter === 'active' ? 'active' : ''}`}
+            onClick={() => setStatusFilter('active')}
+          >
+            النشطين
+          </button>
+          <button
+            className={`city-filter-btn ${statusFilter === 'inactive' ? 'active' : ''}`}
+            onClick={() => setStatusFilter('inactive')}
+          >
+            غير نشطين
+          </button>
+          <button
+            className={`city-filter-btn ${statusFilter === 'all' ? 'active' : ''}`}
+            onClick={() => setStatusFilter('all')}
+          >
+            كل الحالات
+          </button>
+        </div>
       </div>
 
       {/* Clients Grid */}
@@ -297,7 +385,12 @@ function Clients() {
               >
                 <div className="flex-between mb-16">
                   <h3 className="font-bold">{client.name}</h3>
-                  <span className={`status-dot ${due === 0 ? 'active' : due > 0 ? 'warning' : 'danger'}`}></span>
+                  <div className="flex gap-8">
+                    {(client.status || 'active') === 'inactive' && (
+                      <span className="badge badge-secondary">غير نشط</span>
+                    )}
+                    <span className={`status-dot ${(client.status || 'active') === 'inactive' ? 'inactive' : due === 0 ? 'active' : due > 0 ? 'warning' : 'danger'}`}></span>
+                  </div>
                 </div>
                 <div className="flex gap-8 mb-16">
                   <Phone size={16} className="text-muted" />
@@ -334,6 +427,22 @@ function Clients() {
                     <Navigation size={14} />
                     الخريطة
                   </button>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={(event) => openEditModal(event, client)}
+                    title="تعديل بيانات العميل"
+                  >
+                    <Edit size={14} />
+                    تعديل
+                  </button>
+                  <button
+                    className={`btn btn-sm ${(client.status || 'active') === 'inactive' ? 'btn-success' : 'btn-secondary'}`}
+                    onClick={(event) => toggleClientStatus(event, client)}
+                    title={(client.status || 'active') === 'inactive' ? 'تنشيط العميل' : 'تعطيل العميل'}
+                  >
+                    {(client.status || 'active') === 'inactive' ? <UserCheck size={14} /> : <UserX size={14} />}
+                    {(client.status || 'active') === 'inactive' ? 'تنشيط' : 'تعطيل'}
+                  </button>
                 </div>
               </div>
             );
@@ -343,15 +452,15 @@ function Clients() {
 
       {/* Add Client Modal */}
       {showAddModal && (
-        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+        <div className="modal-overlay" onClick={closeClientModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">إضافة عميل جديد</h2>
-              <button className="modal-close" onClick={() => setShowAddModal(false)}>
+              <h2 className="modal-title">{editingClient ? 'تعديل بيانات العميل' : 'إضافة عميل جديد'}</h2>
+              <button className="modal-close" onClick={closeClientModal}>
                 <X size={20} />
               </button>
             </div>
-            <form onSubmit={handleAddClient}>
+            <form onSubmit={handleSaveClient}>
               <div className="modal-body">
                 <div className="form-row">
                   <div className="form-group">
@@ -429,6 +538,18 @@ function Clients() {
                 </div>
 
                 <div className="form-group">
+                  <label className="form-label">حالة العميل</label>
+                  <select
+                    className="form-select"
+                    value={form.status}
+                    onChange={(e) => handleFormChange('status', e.target.value)}
+                  >
+                    <option value="active">نشط</option>
+                    <option value="inactive">غير نشط / مخفي</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
                   <label className="form-label">ملاحظات</label>
                   <textarea
                     className="form-textarea"
@@ -441,9 +562,9 @@ function Clients() {
               <div className="modal-footer">
                 <button type="submit" className="btn btn-primary" disabled={saving}>
                   <Plus size={18} />
-                  {saving ? 'جاري الحفظ...' : 'إضافة العميل'}
+                  {saving ? 'جاري الحفظ...' : (editingClient ? 'حفظ التعديلات' : 'إضافة العميل')}
                 </button>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
+                <button type="button" className="btn btn-secondary" onClick={closeClientModal}>
                   إلغاء
                 </button>
               </div>

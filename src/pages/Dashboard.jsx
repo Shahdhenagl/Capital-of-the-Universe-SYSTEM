@@ -73,7 +73,7 @@ function Dashboard({ cityFilter }) {
     const totalExpenses = expenses?.reduce((sum, e) => sum + Number(e.amount || 0), 0) || 0;
 
     // Fetch total clients
-    let clientQuery = supabase.from('clients').select('id', { count: 'exact', head: true });
+    let clientQuery = supabase.from('clients').select('id', { count: 'exact', head: true }).neq('status', 'inactive');
     if (cityFilter && cityFilter !== 'all') {
       clientQuery = clientQuery.eq('city', cityFilter);
     }
