@@ -1,3 +1,5 @@
+import { supabase, CITIES } from './supabase';
+
 const DEFAULT_COUNTRY_CODE = '966';
 
 function cleanText(value) {
@@ -171,4 +173,58 @@ export async function appendGoogleSheet(sheetName, rows) {
 export async function uploadDriveTextFile(filename, content, mimeType = 'text/plain') {
   await postJson('/api/google-drive-upload', { filename, content, mimeType });
   return true;
+}
+
+export async function checkWeeklyCollections(userId, userName, userBranch) {
+  try {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    const nextWeekStr = nextWeek.toISOString().split('T')[0];
+
+    const { data: dueItems, error } = await supabase
+      .from('collection_schedule')
+      .select('*, clients(name, phone), contracts(contract_number)')
+      .eq('status', 'pending')
+      .gte('due_date', todayStr)
+      .lte('due_date', nextWeekStr);
+
+    if (error) throw error;
+    if (!dueItems || dueItems.length === 0) return;
+
+    for (const item of dueItems) {
+      const notifTitle = `استحقاق تحصيل قريب`;
+      const notifMsg = `العميل ${item.clients?.name || ''} لديه دفعة مستحقة بقيمة ${item.amount} ر.س بتاريخ ${item.due_date}`;
+
+      const { data: existing } = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('title', notifTitle)
+        .like('message', `%${item.clients?.name}%`)
+        .limit(1);
+
+      if (!existing || existing.length === 0) {
+        await supabase.from('notifications').insert({
+          user_id: userId,
+          title: notifTitle,
+          message: notifMsg,
+          type: 'warning',
+          link: '/collections'
+        });
+
+        await notifyIntegrations({
+          title: `🔔 تنبيه استحقاق: ${notifTitle}`,
+          message: notifMsg,
+          actor: userName,
+          amount: `${item.amount} ر.س`,
+          branch: CITIES[item.branch] || item.branch,
+          lines: [`رقم العقد: ${item.contracts?.contract_number || '-'}`],
+          link: '/collections'
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Error checking weekly collections:', err);
+  }
 }

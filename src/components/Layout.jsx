@@ -46,6 +46,16 @@ export default function Layout({ children, cityFilter, setCityFilter }) {
     if (profile) {
       fetchNotificationCount();
       const interval = setInterval(fetchNotificationCount, 60000);
+      
+      // Run weekly collections check once on load/login
+      const alreadyChecked = sessionStorage.getItem('weekly_collections_checked');
+      if (!alreadyChecked) {
+        import('../lib/integrations').then(({ checkWeeklyCollections }) => {
+          checkWeeklyCollections(profile.id, profile.full_name, profile.branch);
+          sessionStorage.setItem('weekly_collections_checked', 'true');
+        }).catch(err => console.error(err));
+      }
+
       return () => clearInterval(interval);
     }
   }, [profile]);

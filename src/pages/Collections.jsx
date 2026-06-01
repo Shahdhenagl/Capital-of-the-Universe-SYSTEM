@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase, formatCurrency, formatDate, CITIES, COLLECTION_STATUS, PAYMENT_METHODS, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Wallet, DollarSign, Calendar, AlertCircle, Check, Search, X, Filter, Download, MessageCircle, UploadCloud } from 'lucide-react';
@@ -435,7 +435,7 @@ function Collections() {
               {filteredSchedules.map(schedule => {
                 const remaining = (parseFloat(schedule.amount) || 0) - (parseFloat(schedule.collected_amount) || 0);
                 return (
-                  <tr key={schedule.id}>
+                  <tr key={schedule.id} className={schedule.status === 'overdue' ? 'table-row-danger' : ''}>
                     <td>
                       <strong>{schedule.clients?.name || '-'}</strong>
                     </td>

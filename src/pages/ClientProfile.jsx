@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, formatCurrency, formatDate, CITIES, QUOTATION_STATUS, PAYMENT_METHODS } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Phone, Mail, MapPin, Building2, FileText, DollarSign, Plus, ArrowRight, X, Calendar, MessageCircle, Navigation } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Building2, FileText, DollarSign, Plus, ArrowRight, X, Calendar, MessageCircle, Navigation, Printer } from 'lucide-react';
 import { openGoogleMaps, openWhatsApp } from '../lib/integrations';
 
 function ClientProfile() {
@@ -13,6 +13,58 @@ function ClientProfile() {
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('quotations');
+
+  // PDF Printing state
+  const [printActive, setPrintActive] = useState(false);
+
+  function triggerPrintStatement() {
+    setPrintActive(true);
+    setTimeout(() => {
+      window.print();
+    }, 300);
+  }
+
+  const getLedger = () => {
+    const ledger = [];
+    
+    // 1. Add contracts (debit / due amount increase)
+    contracts.forEach(c => {
+      ledger.push({
+        date: c.start_date,
+        description: `إبرام عقد مصاعد رقم ${c.contract_number} (${c.service_type || ''})`,
+        type: 'debit',
+        amount: parseFloat(c.total_amount) || 0
+      });
+    });
+
+    // 2. Add collections (credit / payment received)
+    collections.forEach(col => {
+      if (col.status === 'collected' || col.status === 'partial') {
+        const amt = parseFloat(col.collected_amount) || 0;
+        if (amt > 0) {
+          ledger.push({
+            date: col.collected_date || col.due_date,
+            description: `سداد دفعة مالية مستحقة - رقم العقد ${col.contracts?.contract_number || ''}`,
+            type: 'credit',
+            amount: amt
+          });
+        }
+      }
+    });
+
+    // 3. Add spare invoices (debit / due amount increase)
+    spareInvoices.forEach(inv => {
+      ledger.push({
+        date: inv.created_at?.split('T')[0],
+        description: `فاتورة بيع قطع غيار رقم ${inv.invoice_number} - ${inv.notes || ''}`,
+        type: 'debit',
+        amount: parseFloat(inv.total_amount) || 0
+      });
+    });
+
+    // Sort by date ASC
+    return ledger.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  };
 
   // Tab data
   const [quotations, setQuotations] = useState([]);
@@ -320,6 +372,10 @@ function ClientProfile() {
           <button className="btn btn-secondary btn-sm" onClick={openClientMap} disabled={!client.address && !client.city}>
             <Navigation size={16} />
             الخريطة
+          </button>
+          <button className="btn btn-secondary btn-sm" onClick={triggerPrintStatement}>
+            <Printer size={16} />
+            كشف الحساب (PDF)
           </button>
         </div>
       </div>
@@ -662,6 +718,103 @@ function ClientProfile() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Print PDF Vector Document Section for Client Statement */}
+      {printActive && (
+        <div className="print-only-container">
+          <div className="print-header">
+            <div className="print-logo-section">
+              <img src="/logo-transparent.png" alt="عاصمة الكون" />
+              <div>
+                <h1>شركة عاصمة الكون للمصاعد</h1>
+                <span style={{ fontSize: '0.85rem', color: '#555' }}>كشوف الحسابات والمديونيات التفصيلية</span>
+              </div>
+            </div>
+            <div style={{ textAlign: 'left', direction: 'ltr' }}>
+              <p>العميل: <strong>{client.name}</strong></p>
+              <p>تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
+            </div>
+          </div>
+
+          <div className="print-title">كشف حساب مالي رسمي وتفصيلي للعميل</div>
+
+          <div className="print-meta-grid">
+            <div className="print-meta-item">
+              <span>المديونية الحالية (المستحقات المتبقية)</span>
+              <strong style={{ color: '#ef4444' }}>{formatCurrency(totalDue)}</strong>
+            </div>
+            <div className="print-meta-item">
+              <span>إجمالي المبالغ المسددة والمحصلة</span>
+              <strong style={{ color: '#10b981' }}>{formatCurrency(totalPaid)}</strong>
+            </div>
+            <div className="print-meta-item">
+              <span>عدد العقود الإجمالية</span>
+              <strong>{contracts.length}</strong>
+            </div>
+            <div className="print-meta-item">
+              <span>العقود النشطة الحالية</span>
+              <strong>{activeContracts}</strong>
+            </div>
+          </div>
+
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '15px', color: '#1e3a8a', borderBottom: '1px solid #e2e8f0', paddingBottom: '5px' }}>
+            سجل المعاملات والمدفوعات والمستحقات (Ledger Statement)
+          </h3>
+
+          <table className="print-table">
+            <thead>
+              <tr>
+                <th>التاريخ</th>
+                <th>بيان المعاملة</th>
+                <th style={{ color: '#b91c1c' }}>مستحق / مدين (ر.س)</th>
+                <th style={{ color: '#047857' }}>مسدد / دائن (ر.س)</th>
+                <th>الرصيد التراكمي (ر.س)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(() => {
+                let runningBalance = 0;
+                return getLedger().map((item, idx) => {
+                  if (item.type === 'debit') {
+                    runningBalance += item.amount;
+                  } else {
+                    runningBalance -= item.amount;
+                  }
+                  return (
+                    <tr key={idx}>
+                      <td>{formatDate(item.date)}</td>
+                      <td>{item.description}</td>
+                      <td style={{ color: '#b91c1c', fontWeight: item.type === 'debit' ? 'bold' : 'normal' }}>
+                        {item.type === 'debit' ? formatCurrency(item.amount) : '-'}
+                      </td>
+                      <td style={{ color: '#047857', fontWeight: item.type === 'credit' ? 'bold' : 'normal' }}>
+                        {item.type === 'credit' ? formatCurrency(item.amount) : '-'}
+                      </td>
+                      <td><strong>{formatCurrency(runningBalance)}</strong></td>
+                    </tr>
+                  );
+                });
+              })()}
+            </tbody>
+          </table>
+
+          <div style={{ float: 'left', marginTop: '20px', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '15px 30px', borderRadius: '8px' }}>
+            <span style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '5px' }}>صافي المستحقات المتبقية للشركة:</span>
+            <strong style={{ fontSize: '1.4rem', color: '#ef4444' }}>{formatCurrency(totalDue)}</strong>
+          </div>
+
+          <div className="print-footer" style={{ marginTop: '120px', clear: 'both' }}>
+            <div className="print-signature">
+              <span>المدير المالي والمحاسب</span>
+              <strong>الاعتماد والختم الرسمي</strong>
+            </div>
+            <div className="print-signature">
+              <span>الطرف الثاني (العميل)</span>
+              <strong>موافقة الطرف الثاني</strong>
+            </div>
           </div>
         </div>
       )}

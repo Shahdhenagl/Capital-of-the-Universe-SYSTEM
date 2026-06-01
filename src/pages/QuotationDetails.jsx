@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, formatCurrency, formatDate, QUOTATION_STATUS, CITIES, PAYMENT_FREQUENCIES, PAYMENT_METHODS, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { FileText, MessageCircle, Check, X, ArrowRight, Calendar, DollarSign, Download, User } from 'lucide-react';
+import { FileText, MessageCircle, Check, X, ArrowRight, Calendar, DollarSign, Download, User, Printer } from 'lucide-react';
 
 function QuotationDetails() {
   const { id } = useParams();
@@ -30,6 +30,9 @@ function QuotationDetails() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [savingReject, setSavingReject] = useState(false);
+
+  // PDF Printing state
+  const [printItem, setPrintItem] = useState(null);
 
   useEffect(() => {
     fetchQuotation();
@@ -238,6 +241,13 @@ function QuotationDetails() {
     }
   }
 
+  function triggerPrint() {
+    setPrintItem(quotation);
+    setTimeout(() => {
+      window.print();
+    }, 100);
+  }
+
   function sendWhatsApp() {
     if (!client?.phone) return;
     const phone = client.phone.replace(/^0/, '966');
@@ -429,6 +439,11 @@ function QuotationDetails() {
             <button className="btn btn-whatsapp" onClick={sendWhatsApp}>
               <MessageCircle size={18} />
               إرسال عبر واتساب
+            </button>
+
+            <button className="btn btn-secondary" onClick={triggerPrint}>
+              <Printer size={18} />
+              طباعة العرض (PDF)
             </button>
 
             {quotation.status === 'pending' && (
@@ -662,6 +677,94 @@ function QuotationDetails() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Print PDF Vector Document Section for Quotations */}
+      {printItem && (
+        <div className="print-only-container">
+          <div className="print-header">
+            <div className="print-logo-section">
+              <span style={{ fontSize: '2rem' }}>🏗️</span>
+              <div>
+                <h1>شركة عاصمة الكون للمصاعد</h1>
+                <span style={{ fontSize: '0.85rem', color: '#555' }}>عروض الأسعار والمقايسات الرسمية</span>
+              </div>
+            </div>
+            <div style={{ textAlign: 'left', direction: 'ltr' }}>
+              <p>رقم العرض: <strong>{printItem.quotation_number || printItem.id?.slice(0, 8)}</strong></p>
+              <p>تاريخ العرض: {formatDate(printItem.created_at)}</p>
+            </div>
+          </div>
+
+          <div className="print-title">عرض سعر رسمي لتوريد وتركيب وصيانة المصاعد</div>
+
+          <div className="print-meta-grid">
+            <div className="print-meta-item">
+              <span>اسم العميل الطرف الثاني</span>
+              <strong>{printItem.clients?.name || '-'}</strong>
+            </div>
+            <div className="print-meta-item">
+              <span>رقم الهاتف</span>
+              <strong>{printItem.clients?.phone || '-'}</strong>
+            </div>
+            <div className="print-meta-item">
+              <span>عنوان العرض</span>
+              <strong>{printItem.title || '-'}</strong>
+            </div>
+            <div className="print-meta-item">
+              <span>فرع المعاملة</span>
+              <strong>{CITIES[printItem.branch] || printItem.branch || '-'}</strong>
+            </div>
+          </div>
+
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '15px', color: '#1e3a8a', borderBottom: '1px solid #e2e8f0', paddingBottom: '5px' }}>
+            تفاصيل ومواصفات العرض الفني والمالي
+          </h3>
+
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '20px', borderRadius: '8px', marginBottom: '30px', minHeight: '150px' }}>
+            <span style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '10px' }}>بيان التفاصيل والمواصفات:</span>
+            <p style={{ margin: 0, color: '#334155', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>{printItem.description || 'لا توجد تفاصيل إضافية مسجلة.'}</p>
+          </div>
+
+          <table className="print-table" style={{ marginTop: '20px' }}>
+            <thead>
+              <tr>
+                <th>البند</th>
+                <th>بيان التكلفة</th>
+                <th>الإجمالي شامل ضريبة القيمة المضافة (ر.س)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>{printItem.title}</td>
+                <td><strong>{formatCurrency(printItem.amount)}</strong></td>
+              </tr>
+              <tr style={{ background: '#f1f5f9' }}>
+                <td colSpan={2} style={{ textAlign: 'left', fontWeight: 'bold' }}>المجموع الكلي:</td>
+                <td><strong>{formatCurrency(printItem.amount)}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+
+          {printItem.notes && (
+            <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', padding: '15px', borderRadius: '8px', marginBottom: '30px' }}>
+              <span style={{ fontSize: '0.85rem', color: '#b45309', display: 'block', marginBottom: '5px' }}>ملاحظات العرض الاستثنائية:</span>
+              <p style={{ margin: 0, color: '#78350f' }}>{printItem.notes}</p>
+            </div>
+          )}
+
+          <div className="print-footer" style={{ marginTop: '80px' }}>
+            <div className="print-signature">
+              <span>المدير الفني للمصاعد</span>
+              <strong>الاعتماد والختم الرسمي</strong>
+            </div>
+            <div className="print-signature">
+              <span>الاعتماد والقبول (العميل)</span>
+              <strong>التوقيع والختم</strong>
+            </div>
           </div>
         </div>
       )}
