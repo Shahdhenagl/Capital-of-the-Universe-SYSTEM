@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import {
   LayoutDashboard, Users, FileText, Wallet, TrendingDown, TrendingUp,
   Package, UserCog, BarChart3, Bell, Activity, Shield, LogOut,
-  Menu, X, ChevronLeft, Building2, FileCheck, Coins, Plug
+  Menu, X, ChevronLeft, Building2, FileCheck, Coins, Plug, BriefcaseBusiness
 } from 'lucide-react';
 
 const navItems = [
@@ -27,6 +27,7 @@ const navItems = [
   
   { section: 'الإدارة' },
   { path: '/employees', label: 'الموظفين', icon: UserCog },
+  { path: '/services', label: 'أنواع الخدمات', icon: BriefcaseBusiness },
   { path: '/users', label: 'المستخدمين', icon: Shield, adminOnly: true },
   { path: '/activity-log', label: 'سجل الأنشطة', icon: Activity },
   { path: '/notifications', label: 'الإشعارات', icon: Bell },

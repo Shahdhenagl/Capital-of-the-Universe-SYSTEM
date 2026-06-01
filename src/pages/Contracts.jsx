@@ -30,6 +30,8 @@ const CONTRACT_STATUS_LABELS = {
   cancelled: 'موقوف'
 };
 
+const CLIENT_ADDRESS_SITE_ID = '__client_address__';
+
 const EMPTY_FORM = {
   contract_type: 'supply_installation',
   contract_number: '',
@@ -329,7 +331,19 @@ function Contracts({ cityFilter = 'all' }) {
     return true;
   });
 
-  const clientSites = sites.filter(site => site.client_id === form.client_id);
+  const selectedClient = clients.find(client => client.id === form.client_id);
+  const savedClientSites = sites.filter(site => site.client_id === form.client_id);
+  const clientAddressSite = selectedClient?.address
+    ? {
+      id: CLIENT_ADDRESS_SITE_ID,
+      site_name: 'موقع العميل المسجل',
+      address: selectedClient.address,
+      city: selectedClient.city,
+      elevator_count: '',
+      elevator_type: ''
+    }
+    : null;
+  const clientSites = clientAddressSite ? [...savedClientSites, clientAddressSite] : savedClientSites;
 
   function getStatusBadge(status) {
     const map = {
@@ -430,10 +444,35 @@ function Contracts({ cityFilter = 'all' }) {
       }
       if (field === 'client_id') {
         const client = clients.find(c => c.id === value);
-        next.client_site_id = '';
+        const firstSavedSite = sites.find(site => site.client_id === value);
+        const defaultSite = firstSavedSite || (client?.address
+          ? {
+            id: CLIENT_ADDRESS_SITE_ID,
+            site_name: 'موقع العميل المسجل',
+            address: client.address,
+            city: client.city,
+            elevator_count: '',
+            elevator_type: ''
+          }
+          : null);
+
+        next.client_site_id = defaultSite?.id || '';
         next.branch = client?.city || next.branch;
         next.details = {
           ...next.details,
+          links: {
+            ...next.details.links,
+            client_site_id: defaultSite?.id === CLIENT_ADDRESS_SITE_ID ? null : defaultSite?.id || '',
+            uses_client_address: defaultSite?.id === CLIENT_ADDRESS_SITE_ID
+          },
+          contract: {
+            ...next.details.contract,
+            project_name: defaultSite?.site_name || client?.name || '',
+            project_location: defaultSite?.address || client?.address || '',
+            facility_name: client?.name || '',
+            facility_location: defaultSite?.address || client?.address || '',
+            covered_elevators_count: defaultSite?.elevator_count || next.details.contract.covered_elevators_count || ''
+          },
           customer: {
             ...next.details.customer,
             customer_name: client?.name || '',
@@ -447,11 +486,26 @@ function Contracts({ cityFilter = 'all' }) {
         };
       }
       if (field === 'client_site_id') {
-        const site = sites.find(s => s.id === value);
+        const client = clients.find(c => c.id === next.client_id);
+        const site = value === CLIENT_ADDRESS_SITE_ID
+          ? {
+            id: CLIENT_ADDRESS_SITE_ID,
+            site_name: 'موقع العميل المسجل',
+            address: client?.address || '',
+            city: client?.city,
+            elevator_count: '',
+            elevator_type: ''
+          }
+          : sites.find(s => s.id === value);
+
         next.branch = site?.city || next.branch;
         next.details = {
           ...next.details,
-          links: { ...next.details.links, client_site_id: value },
+          links: {
+            ...next.details.links,
+            client_site_id: value === CLIENT_ADDRESS_SITE_ID ? null : value,
+            uses_client_address: value === CLIENT_ADDRESS_SITE_ID
+          },
           contract: {
             ...next.details.contract,
             project_name: site?.site_name || next.details.contract.project_name || '',
@@ -554,7 +608,8 @@ function Contracts({ cityFilter = 'all' }) {
         },
         links: {
           ...form.details.links,
-          client_site_id: form.client_site_id
+          client_site_id: form.client_site_id === CLIENT_ADDRESS_SITE_ID ? null : form.client_site_id,
+          uses_client_address: form.client_site_id === CLIENT_ADDRESS_SITE_ID
         }
       };
 

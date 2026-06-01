@@ -26,6 +26,8 @@ import Users from './pages/Users';
 import Notifications from './pages/Notifications';
 import ActivityLog from './pages/ActivityLog';
 import Integrations from './pages/Integrations';
+import Services from './pages/Services';
+import PublicQuotation from './pages/PublicQuotation';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -42,6 +44,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/q/:id" element={<PublicQuotation />} />
       
       <Route path="/*" element={
         <ProtectedRoute>
@@ -63,6 +66,7 @@ function AppRoutes() {
               <Route path="/payroll" element={<Payroll cityFilter={cityFilter} />} />
               <Route path="/employees" element={<Employees cityFilter={cityFilter} />} />
               <Route path="/employees/:id" element={<EmployeeProfile />} />
+              <Route path="/services" element={<Services />} />
               <Route path="/users" element={
                 <ProtectedRoute adminOnly>
                   <Users />

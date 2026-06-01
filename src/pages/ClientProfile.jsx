@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, formatCurrency, formatDate, CITIES, QUOTATION_STATUS, PAYMENT_METHODS } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Phone, Mail, MapPin, Building2, FileText, DollarSign, Plus, ArrowRight, X, Calendar, MessageCircle, Navigation, Printer } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Building2, FileText, DollarSign, Plus, ArrowRight, X, Calendar, MessageCircle, Navigation, Printer, Edit, Trash2 } from 'lucide-react';
 import { openGoogleMaps, openWhatsApp } from '../lib/integrations';
 
 function ClientProfile() {
@@ -80,6 +80,7 @@ function ClientProfile() {
 
   // Add site modal
   const [showSiteModal, setShowSiteModal] = useState(false);
+  const [editingSite, setEditingSite] = useState(null);
   const [savingSite, setSavingSite] = useState(false);
   const [siteForm, setSiteForm] = useState({
     site_name: '',
@@ -89,6 +90,40 @@ function ClientProfile() {
     elevator_type: '',
     notes: ''
   });
+
+  function parseContractNotes(notes) {
+    if (!notes) return { plainNotes: '', details: {}, attachments: [] };
+    try {
+      const parsed = JSON.parse(notes);
+      return {
+        plainNotes: parsed.plainNotes || '',
+        details: parsed.details || {},
+        attachments: parsed.attachments || []
+      };
+    } catch {
+      return { plainNotes: notes, details: {}, attachments: [] };
+    }
+  }
+
+  function isMaintenanceContract(contract) {
+    const meta = parseContractNotes(contract.notes);
+    return meta.details?.contract_type === 'maintenance' || (contract.service_type || '').includes('صيانة');
+  }
+
+  function getSiteContracts(siteId) {
+    return contracts
+      .filter(contract => {
+        const meta = parseContractNotes(contract.notes);
+        return isMaintenanceContract(contract) &&
+          contract.status === 'active' &&
+          meta.details?.links?.client_site_id === siteId;
+      })
+      .map(contract => ({
+        ...contract,
+        meta: parseContractNotes(contract.notes),
+        payments: collections.filter(item => item.contract_id === contract.id)
+      }));
+  }
 
   useEffect(() => {
     fetchClient();
@@ -211,34 +246,86 @@ function ClientProfile() {
     setSiteForm(prev => ({ ...prev, [field]: value }));
   }
 
-  async function handleAddSite(e) {
+  function resetSiteForm() {
+    setSiteForm({ site_name: '', address: '', city: 'mecca', elevator_count: 1, elevator_type: '', notes: '' });
+  }
+
+  function openAddSiteModal() {
+    setEditingSite(null);
+    resetSiteForm();
+    setShowSiteModal(true);
+  }
+
+  function openEditSiteModal(site) {
+    setEditingSite(site);
+    setSiteForm({
+      site_name: site.site_name || '',
+      address: site.address || '',
+      city: site.city || 'mecca',
+      elevator_count: site.elevator_count || 1,
+      elevator_type: site.elevator_type || '',
+      notes: site.notes || ''
+    });
+    setShowSiteModal(true);
+  }
+
+  function closeSiteModal() {
+    setShowSiteModal(false);
+    setEditingSite(null);
+    resetSiteForm();
+  }
+
+  async function handleSaveSite(e) {
     e.preventDefault();
     if (!siteForm.site_name) return;
 
     try {
       setSavingSite(true);
-      const { error } = await supabase
-        .from('client_sites')
-        .insert({
-          client_id: id,
-          site_name: siteForm.site_name,
-          address: siteForm.address || null,
-          city: siteForm.city,
-          elevator_count: parseInt(siteForm.elevator_count) || 1,
-          elevator_type: siteForm.elevator_type || null,
-          notes: siteForm.notes || null
-        });
+      const payload = {
+        client_id: id,
+        site_name: siteForm.site_name,
+        address: siteForm.address || null,
+        city: siteForm.city,
+        elevator_count: parseInt(siteForm.elevator_count) || 1,
+        elevator_type: siteForm.elevator_type || null,
+        notes: siteForm.notes || null
+      };
+
+      const { error } = editingSite
+        ? await supabase.from('client_sites').update(payload).eq('id', editingSite.id)
+        : await supabase.from('client_sites').insert(payload);
 
       if (error) throw error;
 
-      setSiteForm({ site_name: '', address: '', city: 'mecca', elevator_count: 1, elevator_type: '', notes: '' });
-      setShowSiteModal(false);
+      closeSiteModal();
       fetchSites();
     } catch (err) {
-      console.error('خطأ في إضافة الموقع:', err);
-      alert('حدث خطأ أثناء إضافة الموقع');
+      console.error('خطأ في حفظ الموقع:', err);
+      alert('حدث خطأ أثناء حفظ الموقع');
     } finally {
       setSavingSite(false);
+    }
+  }
+
+  async function handleDeleteSite(site) {
+    const linkedContracts = getSiteContracts(site.id);
+    const message = linkedContracts.length > 0
+      ? `هذا المبنى مشترك في عقد صيانة ساري. هل تريد حذف "${site.site_name}"؟`
+      : `هل تريد حذف المبنى "${site.site_name}"؟`;
+
+    if (!window.confirm(message)) return;
+
+    try {
+      const { error } = await supabase
+        .from('client_sites')
+        .delete()
+        .eq('id', site.id);
+
+      if (error) throw error;
+      fetchSites();
+    } catch (err) {
+      console.error('خطأ في حذف الموقع:', err);
+      alert('حدث خطأ أثناء حذف الموقع');
     }
   }
 
@@ -533,7 +620,7 @@ function ClientProfile() {
             <>
               <div className="flex-between mb-24">
                 <h3 className="font-bold">المواقع ({sites.length})</h3>
-                <button className="btn btn-primary btn-sm" onClick={() => setShowSiteModal(true)}>
+                <button className="btn btn-primary btn-sm" onClick={openAddSiteModal}>
                   <Plus size={16} />
                   إضافة موقع
                 </button>
@@ -546,10 +633,37 @@ function ClientProfile() {
                 </div>
               ) : (
                 <div className="grid-2">
-                  {sites.map(site => (
+                  {sites.map(site => {
+                    const maintenanceContracts = getSiteContracts(site.id);
+                    const activeMaintenance = maintenanceContracts[0];
+                    const visits = activeMaintenance?.meta?.details?.visits || {};
+                    const sla = activeMaintenance?.meta?.details?.sla || {};
+                    const paidAmount = activeMaintenance?.payments.reduce((sum, item) => sum + (parseFloat(item.collected_amount) || 0), 0) || 0;
+                    const remainingAmount = activeMaintenance
+                      ? (parseFloat(activeMaintenance.total_amount) || 0) - paidAmount
+                      : 0;
+
+                    return (
                     <div key={site.id} className="card">
                       <div className="card-body">
-                        <h4 className="font-bold mb-16">{site.site_name}</h4>
+                        <div className="flex-between mb-16">
+                          <div className="flex gap-8" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                            <h4 className="font-bold">{site.site_name}</h4>
+                            {activeMaintenance && (
+                              <span className="badge badge-success">
+                                مشترك صيانة
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex gap-8">
+                            <button className="btn btn-ghost btn-sm" onClick={() => openEditSiteModal(site)} title="تعديل المبنى">
+                              <Edit size={14} />
+                            </button>
+                            <button className="btn btn-ghost btn-sm text-danger" onClick={() => handleDeleteSite(site)} title="حذف المبنى">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
                         <div className="flex gap-8 mb-16">
                           <MapPin size={16} className="text-muted" />
                           <span className="text-muted">{site.address || '-'}</span>
@@ -576,9 +690,108 @@ function ClientProfile() {
                         {site.notes && (
                           <p className="text-muted mt-16">{site.notes}</p>
                         )}
+
+                        {activeMaintenance && (
+                          <div className="mt-24" style={{ borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                            <h4 className="font-semibold mb-16">تفاصيل عقد الصيانة</h4>
+                            <div className="form-row-3">
+                              <div>
+                                <span className="form-label">رقم العقد</span>
+                                <p className="font-bold">{activeMaintenance.contract_number || '-'}</p>
+                              </div>
+                              <div>
+                                <span className="form-label">تاريخ البداية</span>
+                                <p className="font-bold">{formatDate(activeMaintenance.start_date)}</p>
+                              </div>
+                              <div>
+                                <span className="form-label">تاريخ الانتهاء / التجديد</span>
+                                <p className="font-bold">{formatDate(activeMaintenance.end_date)}</p>
+                              </div>
+                            </div>
+
+                            <div className="form-row-3">
+                              <div>
+                                <span className="form-label">قيمة العقد</span>
+                                <p className="font-bold">{formatCurrency(activeMaintenance.total_amount)}</p>
+                              </div>
+                              <div>
+                                <span className="form-label">المحصل</span>
+                                <p className="font-bold text-success">{formatCurrency(paidAmount)}</p>
+                              </div>
+                              <div>
+                                <span className="form-label">المتبقي</span>
+                                <p className="font-bold text-danger">{formatCurrency(remainingAmount > 0 ? remainingAmount : 0)}</p>
+                              </div>
+                            </div>
+
+                            <div className="form-row-3">
+                              <div>
+                                <span className="form-label">الزيارات الشهرية</span>
+                                <p className="font-bold">{visits.monthly_visits || '-'}</p>
+                              </div>
+                              <div>
+                                <span className="form-label">الزيارات الربع سنوية</span>
+                                <p className="font-bold">{visits.quarterly_visits || '-'}</p>
+                              </div>
+                              <div>
+                                <span className="form-label">الزيارة السنوية</span>
+                                <p className="font-bold">{visits.annual_visit || '-'}</p>
+                              </div>
+                            </div>
+
+                            {(sla.failure_response_time || sla.emergency_response_time || sla.working_hours) && (
+                              <div className="form-row-3">
+                                <div>
+                                  <span className="form-label">زمن الأعطال</span>
+                                  <p className="font-bold">{sla.failure_response_time || '-'}</p>
+                                </div>
+                                <div>
+                                  <span className="form-label">زمن الطوارئ</span>
+                                  <p className="font-bold">{sla.emergency_response_time || '-'}</p>
+                                </div>
+                                <div>
+                                  <span className="form-label">أوقات العمل</span>
+                                  <p className="font-bold">{sla.working_hours || '-'}</p>
+                                </div>
+                              </div>
+                            )}
+
+                            {activeMaintenance.payments.length > 0 && (
+                              <div className="table-container mt-16">
+                                <table className="data-table">
+                                  <thead>
+                                    <tr>
+                                      <th>الدفعة</th>
+                                      <th>تاريخ الاستحقاق</th>
+                                      <th>المبلغ</th>
+                                      <th>المحصل</th>
+                                      <th>الحالة</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {activeMaintenance.payments.map(payment => (
+                                      <tr key={payment.id}>
+                                        <td>{payment.notes || '-'}</td>
+                                        <td>{formatDate(payment.due_date)}</td>
+                                        <td>{formatCurrency(payment.amount)}</td>
+                                        <td>{formatCurrency(payment.collected_amount || 0)}</td>
+                                        <td>
+                                          <span className={`badge ${getStatusBadge(payment.status)}`}>
+                                            {getStatusText(payment.status)}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </>
@@ -629,15 +842,15 @@ function ClientProfile() {
 
       {/* Add Site Modal */}
       {showSiteModal && (
-        <div className="modal-overlay" onClick={() => setShowSiteModal(false)}>
+        <div className="modal-overlay" onClick={closeSiteModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">إضافة موقع جديد</h2>
-              <button className="modal-close" onClick={() => setShowSiteModal(false)}>
+              <h2 className="modal-title">{editingSite ? 'تعديل بيانات المبنى' : 'إضافة موقع جديد'}</h2>
+              <button className="modal-close" onClick={closeSiteModal}>
                 <X size={20} />
               </button>
             </div>
-            <form onSubmit={handleAddSite}>
+            <form onSubmit={handleSaveSite}>
               <div className="modal-body">
                 <div className="form-group">
                   <label className="form-label">اسم الموقع *</label>
@@ -710,10 +923,10 @@ function ClientProfile() {
               </div>
               <div className="modal-footer">
                 <button type="submit" className="btn btn-primary" disabled={savingSite}>
-                  <Plus size={18} />
-                  {savingSite ? 'جاري الحفظ...' : 'إضافة الموقع'}
+                  {editingSite ? <Edit size={18} /> : <Plus size={18} />}
+                  {savingSite ? 'جاري الحفظ...' : editingSite ? 'حفظ التعديلات' : 'إضافة الموقع'}
                 </button>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowSiteModal(false)}>
+                <button type="button" className="btn btn-secondary" onClick={closeSiteModal}>
                   إلغاء
                 </button>
               </div>

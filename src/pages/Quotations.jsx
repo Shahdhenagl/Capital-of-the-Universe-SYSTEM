@@ -4,6 +4,117 @@ import { supabase, formatCurrency, formatDate, QUOTATION_STATUS, PAYMENT_FREQUEN
 import { useAuth } from '../contexts/AuthContext';
 import { FileText, Plus, Search, Send, Check, X, Eye, Filter, MessageCircle, Printer } from 'lucide-react';
 
+const QUOTATION_DETAIL_SECTIONS = [
+  {
+    key: 'project',
+    title: 'بيانات المشروع',
+    fields: [
+      ['project_name', 'اسم المشروع'],
+      ['project_location', 'موقع المشروع'],
+      ['quotation_date', 'تاريخ العرض', 'date'],
+      ['validity_period', 'مدة صلاحية العرض']
+    ]
+  },
+  {
+    key: 'elevator',
+    title: 'مواصفات المصعد',
+    fields: [
+      ['elevator_type', 'نوع المصعد'],
+      ['brand', 'الماركة'],
+      ['capacity', 'الحمولة'],
+      ['speed', 'السرعة'],
+      ['stops', 'عدد الوقفات', 'number'],
+      ['entrances', 'عدد المداخل', 'number'],
+      ['drive_type', 'نوع التشغيل'],
+      ['machine_type', 'نوع الماكينة'],
+      ['control_type', 'نوع الكنترول'],
+      ['shaft_dimensions', 'مقاس البئر'],
+      ['cabin_dimensions', 'مقاس الكابينة'],
+      ['door_dimensions', 'مقاس الأبواب'],
+      ['travel_distance', 'مسافة الرحلة']
+    ]
+  },
+  {
+    key: 'finishes',
+    title: 'التشطيبات',
+    fields: [
+      ['cabin_design', 'تصميم الكابينة'],
+      ['cabin_finish', 'تشطيب الكابينة'],
+      ['flooring', 'الأرضية'],
+      ['ceiling', 'السقف'],
+      ['doors_finish', 'تشطيب الأبواب'],
+      ['operation_panels', 'لوحات التشغيل'],
+      ['handrail_mirror', 'الدرابزين / المرآة']
+    ]
+  },
+  {
+    key: 'safety',
+    title: 'السلامة والأنظمة',
+    fields: [
+      ['ard', 'جهاز الإنقاذ التلقائي'],
+      ['door_sensor', 'حساس الباب'],
+      ['overload_sensor', 'حساس زيادة الوزن'],
+      ['speed_governor', 'حاكم السرعة'],
+      ['intercom', 'الإنتركم'],
+      ['emergency_light', 'إنارة الطوارئ'],
+      ['fire_mode', 'وضع الحريق']
+    ]
+  },
+  {
+    key: 'execution',
+    title: 'التنفيذ والضمان',
+    fields: [
+      ['supply_duration', 'مدة التوريد'],
+      ['installation_duration', 'مدة التركيب'],
+      ['warranty', 'الضمان'],
+      ['maintenance_included', 'الصيانة المشمولة'],
+      ['excluded_items', 'الأعمال غير المشمولة']
+    ]
+  },
+  {
+    key: 'financial',
+    title: 'الشروط المالية',
+    fields: [
+      ['price_before_vat', 'السعر قبل الضريبة', 'number'],
+      ['vat_amount', 'ضريبة القيمة المضافة', 'number'],
+      ['payment_terms', 'شروط الدفع'],
+      ['bank_details', 'بيانات التحويل']
+    ]
+  }
+];
+
+function createEmptyQuotationDetails() {
+  return QUOTATION_DETAIL_SECTIONS.reduce((acc, section) => {
+    acc[section.key] = {};
+    return acc;
+  }, {});
+}
+
+function parseQuotationDescription(description) {
+  if (!description) return { plainDescription: '', details: createEmptyQuotationDetails() };
+  try {
+    const parsed = JSON.parse(description);
+    return {
+      plainDescription: parsed.plainDescription || '',
+      details: {
+        ...createEmptyQuotationDetails(),
+        ...(parsed.details || {})
+      }
+    };
+  } catch {
+    return { plainDescription: description, details: createEmptyQuotationDetails() };
+  }
+}
+
+function parseQuotationNotes(notes) {
+  if (!notes) return {};
+  try {
+    return JSON.parse(notes);
+  } catch {
+    return { plainNotes: notes };
+  }
+}
+
 function Quotations() {
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -34,6 +145,7 @@ function Quotations() {
     service_id: '',
     title: '',
     description: '',
+    details: createEmptyQuotationDetails(),
     amount: '',
     branch: 'mecca',
     pdf_file: null
@@ -92,7 +204,8 @@ function Quotations() {
     try {
       const { data, error } = await supabase
         .from('services')
-        .select('id, name, price')
+        .select('*')
+        .neq('is_active', false)
         .order('name');
       if (error) throw error;
       setServices(data || []);
@@ -117,6 +230,30 @@ function Quotations() {
     setForm(prev => ({ ...prev, [field]: value }));
   }
 
+  function handleDetailChange(section, field, value) {
+    setForm(prev => {
+      const details = {
+        ...prev.details,
+        [section]: {
+          ...prev.details[section],
+          [field]: value
+        }
+      };
+      const next = {
+        ...prev,
+        details
+      };
+
+      if (section === 'financial' && (field === 'price_before_vat' || field === 'vat_amount')) {
+        const price = parseFloat(details.financial?.price_before_vat) || 0;
+        const vat = parseFloat(details.financial?.vat_amount) || 0;
+        if (price || vat) next.amount = (price + vat).toFixed(2);
+      }
+
+      return next;
+    });
+  }
+
   function handleContractFormChange(field, value) {
     setContractForm(prev => ({ ...prev, [field]: value }));
   }
@@ -127,9 +264,17 @@ function Quotations() {
       service_id: '',
       title: '',
       description: '',
+      details: createEmptyQuotationDetails(),
       amount: '',
       branch: 'mecca',
       pdf_file: null
+    });
+  }
+
+  function buildQuotationDescription() {
+    return JSON.stringify({
+      plainDescription: form.description,
+      details: form.details
     });
   }
 
@@ -163,7 +308,7 @@ function Quotations() {
           client_id: form.client_id,
           service_id: form.service_id || null,
           title: form.title,
-          description: form.description || null,
+          description: buildQuotationDescription(),
           amount: parseFloat(form.amount),
           branch: form.branch,
           status: 'pending',
@@ -349,12 +494,14 @@ function Quotations() {
   function sendWhatsApp(quotation) {
     const clientPhone = quotation.clients?.phone || '';
     const phone = clientPhone.replace(/^0/, '966');
+    const publicLink = `${window.location.origin}/q/${quotation.id}`;
     const message = encodeURIComponent(
       `مرحباً،\n` +
       `نود إبلاغكم بعرض السعر التالي من شركة عاصمة الكون:\n\n` +
       `📋 العنوان: ${quotation.title || ''}\n` +
       `💰 المبلغ: ${formatCurrency(quotation.amount)}\n` +
       `📅 التاريخ: ${formatDate(quotation.created_at)}\n\n` +
+      `يمكنكم فتح عرض السعر والرد بالموافقة أو الرفض أو التفاوض من الرابط التالي:\n${publicLink}\n\n` +
       `نتطلع لتعاونكم معنا.\nشكراً لكم.`
     );
     window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
@@ -367,6 +514,19 @@ function Quotations() {
       rejected: 'badge-danger'
     };
     return map[status] || 'badge-secondary';
+  }
+
+  function getQuotationDetailRows(quotation) {
+    const parsed = parseQuotationDescription(quotation.description);
+    return QUOTATION_DETAIL_SECTIONS.flatMap(section =>
+      section.fields
+        .map(([field, label]) => ({
+          section: section.title,
+          label,
+          value: parsed.details?.[section.key]?.[field]
+        }))
+        .filter(row => row.value)
+    );
   }
 
   if (loading) {
@@ -486,9 +646,16 @@ function Quotations() {
                   <td>{q.title || '-'}</td>
                   <td>{formatCurrency(q.amount)}</td>
                   <td>
-                    <span className={`badge ${getStatusBadgeClass(q.status)}`}>
-                      {QUOTATION_STATUS[q.status] || q.status}
-                    </span>
+                    <div className="flex gap-8" style={{ flexWrap: 'wrap' }}>
+                      <span className={`badge ${getStatusBadgeClass(q.status)}`}>
+                        {QUOTATION_STATUS[q.status] || q.status}
+                      </span>
+                      {parseQuotationNotes(q.notes).client_response && (
+                        <span className="badge badge-info">
+                          رد العميل: {parseQuotationNotes(q.notes).client_response.decision === 'accepted' ? 'موافق' : parseQuotationNotes(q.notes).client_response.decision === 'rejected' ? 'رافض' : 'تفاوض'}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td>{formatDate(q.created_at)}</td>
                   <td>
@@ -595,13 +762,38 @@ function Quotations() {
                   />
                 </div>
 
+                {QUOTATION_DETAIL_SECTIONS.map(section => (
+                  <div className="card mb-24" key={section.key}>
+                    <div className="card-header">
+                      <h3 className="card-title">{section.title}</h3>
+                    </div>
+                    <div className="card-body">
+                      <div className="form-row-3">
+                        {section.fields.map(([field, label, type = 'text']) => (
+                          <div className="form-group" key={`${section.key}-${field}`}>
+                            <label className="form-label">{label}</label>
+                            <input
+                              type={type}
+                              className="form-input"
+                              value={form.details?.[section.key]?.[field] || ''}
+                              onChange={(e) => handleDetailChange(section.key, field, e.target.value)}
+                              min={type === 'number' ? '0' : undefined}
+                              step={type === 'number' ? '0.01' : undefined}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
                 <div className="form-group">
-                  <label className="form-label">الوصف</label>
+                  <label className="form-label">ملاحظات إضافية على العرض</label>
                   <textarea
                     className="form-textarea"
                     value={form.description}
                     onChange={(e) => handleFormChange('description', e.target.value)}
-                    placeholder="تفاصيل عرض السعر..."
+                    placeholder="أي شروط أو ملاحظات إضافية..."
                   ></textarea>
                 </div>
 
@@ -793,10 +985,33 @@ function Quotations() {
             تفاصيل ومواصفات العرض الفني والمالي
           </h3>
 
-          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '20px', borderRadius: '8px', marginBottom: '30px', minHeight: '150px' }}>
-            <span style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '10px' }}>بيان التفاصيل والمواصفات:</span>
-            <p style={{ margin: 0, color: '#334155', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>{printItem.description || 'لا توجد تفاصيل إضافية مسجلة.'}</p>
-          </div>
+          {getQuotationDetailRows(printItem).length > 0 ? (
+            <table className="print-table" style={{ marginBottom: '30px' }}>
+              <thead>
+                <tr>
+                  <th>القسم</th>
+                  <th>البند</th>
+                  <th>البيان</th>
+                </tr>
+              </thead>
+              <tbody>
+                {getQuotationDetailRows(printItem).map((row, index) => (
+                  <tr key={`${row.section}-${row.label}-${index}`}>
+                    <td>{row.section}</td>
+                    <td>{row.label}</td>
+                    <td><strong>{row.value}</strong></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : null}
+
+          {parseQuotationDescription(printItem.description).plainDescription && (
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '20px', borderRadius: '8px', marginBottom: '30px' }}>
+              <span style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '10px' }}>ملاحظات إضافية:</span>
+              <p style={{ margin: 0, color: '#334155', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>{parseQuotationDescription(printItem.description).plainDescription}</p>
+            </div>
+          )}
 
           <table className="print-table" style={{ marginTop: '20px' }}>
             <thead>

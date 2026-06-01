@@ -4,6 +4,53 @@ import { supabase, formatCurrency, formatDate, QUOTATION_STATUS, CITIES, PAYMENT
 import { useAuth } from '../contexts/AuthContext';
 import { FileText, MessageCircle, Check, X, ArrowRight, Calendar, DollarSign, Download, User, Printer } from 'lucide-react';
 
+const QUOTATION_DETAIL_SECTIONS = [
+  { key: 'project', title: 'بيانات المشروع', fields: [['project_name', 'اسم المشروع'], ['project_location', 'موقع المشروع'], ['quotation_date', 'تاريخ العرض'], ['validity_period', 'مدة صلاحية العرض']] },
+  { key: 'elevator', title: 'مواصفات المصعد', fields: [['elevator_type', 'نوع المصعد'], ['brand', 'الماركة'], ['capacity', 'الحمولة'], ['speed', 'السرعة'], ['stops', 'عدد الوقفات'], ['entrances', 'عدد المداخل'], ['drive_type', 'نوع التشغيل'], ['machine_type', 'نوع الماكينة'], ['control_type', 'نوع الكنترول'], ['shaft_dimensions', 'مقاس البئر'], ['cabin_dimensions', 'مقاس الكابينة'], ['door_dimensions', 'مقاس الأبواب'], ['travel_distance', 'مسافة الرحلة']] },
+  { key: 'finishes', title: 'التشطيبات', fields: [['cabin_design', 'تصميم الكابينة'], ['cabin_finish', 'تشطيب الكابينة'], ['flooring', 'الأرضية'], ['ceiling', 'السقف'], ['doors_finish', 'تشطيب الأبواب'], ['operation_panels', 'لوحات التشغيل'], ['handrail_mirror', 'الدرابزين / المرآة']] },
+  { key: 'safety', title: 'السلامة والأنظمة', fields: [['ard', 'جهاز الإنقاذ التلقائي'], ['door_sensor', 'حساس الباب'], ['overload_sensor', 'حساس زيادة الوزن'], ['speed_governor', 'حاكم السرعة'], ['intercom', 'الإنتركم'], ['emergency_light', 'إنارة الطوارئ'], ['fire_mode', 'وضع الحريق']] },
+  { key: 'execution', title: 'التنفيذ والضمان', fields: [['supply_duration', 'مدة التوريد'], ['installation_duration', 'مدة التركيب'], ['warranty', 'الضمان'], ['maintenance_included', 'الصيانة المشمولة'], ['excluded_items', 'الأعمال غير المشمولة']] },
+  { key: 'financial', title: 'الشروط المالية', fields: [['price_before_vat', 'السعر قبل الضريبة'], ['vat_amount', 'ضريبة القيمة المضافة'], ['payment_terms', 'شروط الدفع'], ['bank_details', 'بيانات التحويل']] }
+];
+
+function emptyQuotationDetails() {
+  return QUOTATION_DETAIL_SECTIONS.reduce((acc, section) => {
+    acc[section.key] = {};
+    return acc;
+  }, {});
+}
+
+function parseQuotationDescription(description) {
+  if (!description) return { plainDescription: '', details: emptyQuotationDetails() };
+  try {
+    const parsed = JSON.parse(description);
+    return {
+      plainDescription: parsed.plainDescription || '',
+      details: { ...emptyQuotationDetails(), ...(parsed.details || {}) }
+    };
+  } catch {
+    return { plainDescription: description, details: emptyQuotationDetails() };
+  }
+}
+
+function getQuotationDetailRows(quotation) {
+  const parsed = parseQuotationDescription(quotation?.description);
+  return QUOTATION_DETAIL_SECTIONS.flatMap(section =>
+    section.fields
+      .map(([field, label]) => ({ section: section.title, label, value: parsed.details?.[section.key]?.[field] }))
+      .filter(row => row.value)
+  );
+}
+
+function parseQuotationNotes(notes) {
+  if (!notes) return {};
+  try {
+    return JSON.parse(notes);
+  } catch {
+    return { plainNotes: notes };
+  }
+}
+
 function QuotationDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -251,13 +298,16 @@ function QuotationDetails() {
   function sendWhatsApp() {
     if (!client?.phone) return;
     const phone = client.phone.replace(/^0/, '966');
+    const parsedDescription = parseQuotationDescription(quotation.description);
+    const publicLink = `${window.location.origin}/q/${quotation.id}`;
     const message = encodeURIComponent(
       `مرحباً ${client.name}،\n` +
       `نود إبلاغكم بعرض السعر التالي من شركة عاصمة الكون:\n\n` +
       `📋 العنوان: ${quotation.title || ''}\n` +
       `💰 المبلغ: ${formatCurrency(quotation.amount)}\n` +
       `📅 التاريخ: ${formatDate(quotation.created_at)}\n` +
-      `${quotation.description ? `📝 الوصف: ${quotation.description}\n` : ''}` +
+      `${parsedDescription.plainDescription ? `📝 الوصف: ${parsedDescription.plainDescription}\n` : ''}` +
+      `\nيمكنكم فتح عرض السعر والرد بالموافقة أو الرفض أو التفاوض من الرابط التالي:\n${publicLink}\n` +
       `\nنتطلع لتعاونكم معنا.\nشكراً لكم.`
     );
     window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
@@ -400,11 +450,35 @@ function QuotationDetails() {
           </div>
 
           {/* Description */}
-          {quotation.description && (
+          {(getQuotationDetailRows(quotation).length > 0 || parseQuotationDescription(quotation.description).plainDescription) && (
             <div className="card mb-24">
               <div className="card-body">
-                <h3 className="font-semibold mb-16">الوصف</h3>
-                <p className="text-muted">{quotation.description}</p>
+                <h3 className="font-semibold mb-16">تفاصيل ومواصفات عرض السعر</h3>
+                {getQuotationDetailRows(quotation).length > 0 && (
+                  <div className="table-container mb-24">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>القسم</th>
+                          <th>البند</th>
+                          <th>البيان</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {getQuotationDetailRows(quotation).map((row, index) => (
+                          <tr key={`${row.section}-${row.label}-${index}`}>
+                            <td>{row.section}</td>
+                            <td>{row.label}</td>
+                            <td><strong>{row.value}</strong></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {parseQuotationDescription(quotation.description).plainDescription && (
+                  <p className="text-muted">{parseQuotationDescription(quotation.description).plainDescription}</p>
+                )}
               </div>
             </div>
           )}
@@ -430,6 +504,49 @@ function QuotationDetails() {
               <div className="card-body">
                 <h3 className="font-semibold mb-16 text-danger">سبب الرفض</h3>
                 <p className="text-muted">{quotation.rejection_reason}</p>
+              </div>
+            </div>
+          )}
+
+          {parseQuotationNotes(quotation.notes).client_response && (
+            <div className="card mb-24">
+              <div className="card-header">
+                <h3 className="card-title">رد العميل من رابط العرض</h3>
+              </div>
+              <div className="card-body">
+                {(() => {
+                  const response = parseQuotationNotes(quotation.notes).client_response;
+                  return (
+                    <div className="form-row-3">
+                      <div>
+                        <span className="form-label">قرار العميل</span>
+                        <p className="font-bold">
+                          {response.decision === 'accepted' ? 'موافق' : response.decision === 'rejected' ? 'رافض' : 'تفاوض'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="form-label">السعر المقترح</span>
+                        <p className="font-bold">{response.negotiated_amount ? formatCurrency(response.negotiated_amount) : '-'}</p>
+                      </div>
+                      <div>
+                        <span className="form-label">تاريخ الرد</span>
+                        <p className="font-bold">{formatDate(response.responded_at)}</p>
+                      </div>
+                      <div>
+                        <span className="form-label">اسم العميل</span>
+                        <p className="font-bold">{response.customer_name || '-'}</p>
+                      </div>
+                      <div>
+                        <span className="form-label">رقم التواصل</span>
+                        <p className="font-bold">{response.customer_phone || '-'}</p>
+                      </div>
+                      <div>
+                        <span className="form-label">ملاحظات</span>
+                        <p className="font-bold">{response.notes || '-'}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -723,10 +840,33 @@ function QuotationDetails() {
             تفاصيل ومواصفات العرض الفني والمالي
           </h3>
 
-          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '20px', borderRadius: '8px', marginBottom: '30px', minHeight: '150px' }}>
-            <span style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '10px' }}>بيان التفاصيل والمواصفات:</span>
-            <p style={{ margin: 0, color: '#334155', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>{printItem.description || 'لا توجد تفاصيل إضافية مسجلة.'}</p>
-          </div>
+          {getQuotationDetailRows(printItem).length > 0 && (
+            <table className="print-table" style={{ marginBottom: '30px' }}>
+              <thead>
+                <tr>
+                  <th>القسم</th>
+                  <th>البند</th>
+                  <th>البيان</th>
+                </tr>
+              </thead>
+              <tbody>
+                {getQuotationDetailRows(printItem).map((row, index) => (
+                  <tr key={`${row.section}-${row.label}-${index}`}>
+                    <td>{row.section}</td>
+                    <td>{row.label}</td>
+                    <td><strong>{row.value}</strong></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {parseQuotationDescription(printItem.description).plainDescription && (
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '20px', borderRadius: '8px', marginBottom: '30px' }}>
+              <span style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '10px' }}>ملاحظات إضافية:</span>
+              <p style={{ margin: 0, color: '#334155', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>{parseQuotationDescription(printItem.description).plainDescription}</p>
+            </div>
+          )}
 
           <table className="print-table" style={{ marginTop: '20px' }}>
             <thead>
