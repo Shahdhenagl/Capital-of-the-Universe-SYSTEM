@@ -115,7 +115,12 @@ function parseQuotationNotes(notes) {
   }
 }
 
-function Quotations() {
+function isMissingStorageBucket(error) {
+  const message = `${error?.message || ''} ${error?.error || ''}`.toLowerCase();
+  return message.includes('bucket not found') || message.includes('bucket_not_found');
+}
+
+function Quotations({ cityFilter: globalCityFilter = 'all' }) {
   const { profile } = useAuth();
   const navigate = useNavigate();
 
@@ -168,6 +173,10 @@ function Quotations() {
     fetchClients();
     fetchServices();
   }, []);
+
+  useEffect(() => {
+    setCityFilter(globalCityFilter || 'all');
+  }, [globalCityFilter]);
 
   async function fetchQuotations() {
     try {
@@ -278,6 +287,32 @@ function Quotations() {
     });
   }
 
+  async function uploadQuotationPdf(file) {
+    if (!file) return { url: null, warning: '' };
+
+    const safeName = file.name.replace(/[^\w.\-ء-ي]+/g, '_');
+    const fileName = `quotations/${Date.now()}_${safeName}`;
+    const { error: uploadError } = await supabase.storage
+      .from('documents')
+      .upload(fileName, file);
+
+    if (uploadError) {
+      if (isMissingStorageBucket(uploadError)) {
+        return {
+          url: null,
+          warning: 'تم حفظ عرض السعر، لكن لم يتم رفع ملف PDF لأن Bucket documents غير موجود في Supabase.'
+        };
+      }
+      throw uploadError;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('documents')
+      .getPublicUrl(fileName);
+
+    return { url: urlData?.publicUrl || null, warning: '' };
+  }
+
   async function handleAddQuotation(e) {
     e.preventDefault();
     if (!form.client_id || !form.title || !form.amount) return;
@@ -287,17 +322,11 @@ function Quotations() {
       const selectedService = services.find(service => service.id === form.service_id);
 
       let pdfUrl = null;
+      let uploadWarning = '';
       if (form.pdf_file) {
-        const fileName = `quotations/${Date.now()}_${form.pdf_file.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('documents')
-          .upload(fileName, form.pdf_file);
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage
-          .from('documents')
-          .getPublicUrl(fileName);
-        pdfUrl = urlData?.publicUrl || null;
+        const uploadResult = await uploadQuotationPdf(form.pdf_file);
+        pdfUrl = uploadResult.url;
+        uploadWarning = uploadResult.warning;
       }
 
       const quotationNumber = `QT-${Date.now().toString().slice(-8)}`;
@@ -347,6 +376,7 @@ function Quotations() {
       resetForm();
       setShowAddModal(false);
       fetchQuotations();
+      if (uploadWarning) alert(uploadWarning);
     } catch (err) {
       console.error('خطأ في إنشاء عرض السعر:', err);
       alert(`حدث خطأ أثناء إنشاء عرض السعر: ${err.message || 'خطأ غير معروف'}`);

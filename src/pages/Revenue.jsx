@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { TrendingUp, Plus, Settings, Search, Calendar, Trash2, X, Edit } from 'lucide-react';
 import { notifyTransaction } from '../lib/integrations';
 
-function Revenue() {
+function Revenue({ cityFilter = 'all' }) {
   const { profile } = useAuth();
 
   const [revenues, setRevenues] = useState([]);
@@ -41,6 +41,10 @@ function Revenue() {
     fetchCategories();
     fetchClients();
   }, []);
+
+  useEffect(() => {
+    setFilterCity(cityFilter === 'all' ? '' : cityFilter);
+  }, [cityFilter]);
 
   async function fetchRevenues() {
     try {

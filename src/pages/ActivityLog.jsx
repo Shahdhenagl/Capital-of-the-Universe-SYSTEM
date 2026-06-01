@@ -3,7 +3,7 @@ import { supabase, CITIES, formatDate } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Activity, Search, Filter, Calendar } from 'lucide-react';
 
-function ActivityLog() {
+function ActivityLog({ cityFilter = 'all' }) {
   const { profile } = useAuth();
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +31,10 @@ function ActivityLog() {
   useEffect(() => {
     fetchActivities();
   }, [moduleFilter, branchFilter, dateFrom, dateTo, searchUser]);
+
+  useEffect(() => {
+    setBranchFilter(cityFilter === 'all' ? '' : cityFilter);
+  }, [cityFilter]);
 
   async function fetchActivities() {
     try {

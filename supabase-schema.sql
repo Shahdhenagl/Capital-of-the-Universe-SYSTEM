@@ -7,6 +7,72 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ==============================================
+-- Storage Bucket للمرفقات وملفات PDF
+-- ==============================================
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'documents',
+  'documents',
+  true,
+  52428800,
+  ARRAY[
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'image/jpeg',
+    'image/png',
+    'image/webp'
+  ]::text[]
+)
+ON CONFLICT (id) DO UPDATE SET
+  public = EXCLUDED.public,
+  file_size_limit = EXCLUDED.file_size_limit,
+  allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Public can read documents'
+  ) THEN
+    CREATE POLICY "Public can read documents"
+      ON storage.objects FOR SELECT
+      USING (bucket_id = 'documents');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Authenticated users can upload documents'
+  ) THEN
+    CREATE POLICY "Authenticated users can upload documents"
+      ON storage.objects FOR INSERT
+      TO authenticated
+      WITH CHECK (bucket_id = 'documents');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Authenticated users can update documents'
+  ) THEN
+    CREATE POLICY "Authenticated users can update documents"
+      ON storage.objects FOR UPDATE
+      TO authenticated
+      USING (bucket_id = 'documents')
+      WITH CHECK (bucket_id = 'documents');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Authenticated users can delete documents'
+  ) THEN
+    CREATE POLICY "Authenticated users can delete documents"
+      ON storage.objects FOR DELETE
+      TO authenticated
+      USING (bucket_id = 'documents');
+  END IF;
+END $$;
+
+-- ==============================================
 -- 1. جدول الملفات الشخصية (مرتبط بـ auth.users)
 -- ==============================================
 CREATE TABLE profiles (
@@ -53,10 +119,19 @@ CREATE TABLE client_sites (
   address TEXT,
   city TEXT NOT NULL CHECK (city IN ('mecca', 'jeddah')),
   elevator_count INTEGER DEFAULT 1,
+  floor_count INTEGER DEFAULT 0,
   elevator_type TEXT,
+  responsible_name TEXT,
+  responsible_phone TEXT,
+  elevator_codes JSONB DEFAULT '[]'::jsonb,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE client_sites ADD COLUMN IF NOT EXISTS floor_count INTEGER DEFAULT 0;
+ALTER TABLE client_sites ADD COLUMN IF NOT EXISTS responsible_name TEXT;
+ALTER TABLE client_sites ADD COLUMN IF NOT EXISTS responsible_phone TEXT;
+ALTER TABLE client_sites ADD COLUMN IF NOT EXISTS elevator_codes JSONB DEFAULT '[]'::jsonb;
 
 -- ==============================================
 -- 4. جدول أنواع المصروفات

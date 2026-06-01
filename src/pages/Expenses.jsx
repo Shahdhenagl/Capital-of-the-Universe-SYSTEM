@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { TrendingDown, Plus, Settings, Search, Calendar, Trash2, X, Edit } from 'lucide-react';
 import { notifyTransaction } from '../lib/integrations';
 
-function Expenses() {
+function Expenses({ cityFilter = 'all' }) {
   const { profile } = useAuth();
 
   const [expenses, setExpenses] = useState([]);
@@ -38,6 +38,10 @@ function Expenses() {
     fetchExpenses();
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    setFilterCity(cityFilter === 'all' ? '' : cityFilter);
+  }, [cityFilter]);
 
   async function fetchExpenses() {
     try {

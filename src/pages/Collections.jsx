@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Wallet, DollarSign, Calendar, AlertCircle, Check, Search, X, Filter, Download, MessageCircle, UploadCloud } from 'lucide-react';
 import { appendGoogleSheet, downloadCsv, notifyIntegrations, openWhatsApp, uploadDriveTextFile } from '../lib/integrations';
 
-function Collections() {
+function Collections({ cityFilter = 'all' }) {
   const { profile } = useAuth();
 
   const [schedules, setSchedules] = useState([]);
@@ -33,6 +33,10 @@ function Collections() {
     markOverdue();
     fetchSchedules();
   }, []);
+
+  useEffect(() => {
+    setFilterCity(cityFilter === 'all' ? '' : cityFilter);
+  }, [cityFilter]);
 
   async function markOverdue() {
     try {

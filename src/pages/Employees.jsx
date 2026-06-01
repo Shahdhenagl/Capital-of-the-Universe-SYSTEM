@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Users, Plus, Search, Phone, MapPin, Briefcase, Edit, Trash2, X } from 'lucide-react';
 import { formatSaudiLocalPhoneInput, isValidSaudiLocalPhone } from '../lib/integrations';
 
-function Employees() {
+function Employees({ cityFilter = 'all' }) {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const [employees, setEmployees] = useState([]);
@@ -30,6 +30,10 @@ function Employees() {
   useEffect(() => {
     fetchEmployees();
   }, []);
+
+  useEffect(() => {
+    setBranchFilter(cityFilter === 'all' ? '' : cityFilter);
+  }, [cityFilter]);
 
   async function fetchEmployees() {
     try {

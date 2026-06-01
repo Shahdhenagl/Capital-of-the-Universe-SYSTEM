@@ -252,6 +252,10 @@ function Contracts({ cityFilter = 'all' }) {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    setFilterCity(cityFilter === 'all' ? '' : cityFilter);
+  }, [cityFilter]);
+
   async function fetchData() {
     try {
       setLoading(true);

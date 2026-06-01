@@ -5,6 +5,92 @@ import { useAuth } from '../contexts/AuthContext';
 import { User, Phone, Mail, MapPin, Building2, FileText, DollarSign, Plus, ArrowRight, X, Calendar, MessageCircle, Navigation, Printer, Edit, Trash2 } from 'lucide-react';
 import { openGoogleMaps, openWhatsApp } from '../lib/integrations';
 
+const QUOTATION_DETAIL_SECTIONS = [
+  {
+    key: 'project',
+    title: 'بيانات المشروع',
+    fields: [
+      ['project_name', 'اسم المشروع'],
+      ['project_location', 'موقع المشروع'],
+      ['quotation_date', 'تاريخ العرض', 'date'],
+      ['validity_period', 'مدة صلاحية العرض']
+    ]
+  },
+  {
+    key: 'elevator',
+    title: 'مواصفات المصعد',
+    fields: [
+      ['elevator_type', 'نوع المصعد'],
+      ['brand', 'الماركة'],
+      ['capacity', 'الحمولة'],
+      ['speed', 'السرعة'],
+      ['stops', 'عدد الوقفات', 'number'],
+      ['entrances', 'عدد المداخل', 'number'],
+      ['drive_type', 'نوع التشغيل'],
+      ['machine_type', 'نوع الماكينة'],
+      ['control_type', 'نوع الكنترول'],
+      ['shaft_dimensions', 'مقاس البئر'],
+      ['cabin_dimensions', 'مقاس الكابينة'],
+      ['door_dimensions', 'مقاس الأبواب'],
+      ['travel_distance', 'مسافة الرحلة']
+    ]
+  },
+  {
+    key: 'finishes',
+    title: 'التشطيبات',
+    fields: [
+      ['cabin_design', 'تصميم الكابينة'],
+      ['cabin_finish', 'تشطيب الكابينة'],
+      ['flooring', 'الأرضية'],
+      ['ceiling', 'السقف'],
+      ['doors_finish', 'تشطيب الأبواب'],
+      ['operation_panels', 'لوحات التشغيل'],
+      ['handrail_mirror', 'الدرابزين / المرآة']
+    ]
+  },
+  {
+    key: 'safety',
+    title: 'السلامة والأنظمة',
+    fields: [
+      ['ard', 'جهاز الإنقاذ التلقائي'],
+      ['door_sensor', 'حساس الباب'],
+      ['overload_sensor', 'حساس زيادة الوزن'],
+      ['speed_governor', 'حاكم السرعة'],
+      ['intercom', 'الإنتركم'],
+      ['emergency_light', 'إنارة الطوارئ'],
+      ['fire_mode', 'وضع الحريق']
+    ]
+  },
+  {
+    key: 'execution',
+    title: 'التنفيذ والضمان',
+    fields: [
+      ['supply_duration', 'مدة التوريد'],
+      ['installation_duration', 'مدة التركيب'],
+      ['warranty', 'الضمان'],
+      ['maintenance_included', 'الصيانة المشمولة'],
+      ['excluded_items', 'الأعمال غير المشمولة']
+    ]
+  },
+  {
+    key: 'financial',
+    title: 'الشروط المالية',
+    fields: [
+      ['price_before_vat', 'السعر قبل الضريبة', 'number'],
+      ['vat_amount', 'ضريبة القيمة المضافة', 'number'],
+      ['payment_terms', 'شروط الدفع'],
+      ['bank_details', 'بيانات التحويل']
+    ]
+  }
+];
+
+function createEmptyQuotationDetails() {
+  return QUOTATION_DETAIL_SECTIONS.reduce((acc, section) => {
+    acc[section.key] = {};
+    return acc;
+  }, {});
+}
+
 function ClientProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -72,6 +158,7 @@ function ClientProfile() {
   const [collections, setCollections] = useState([]);
   const [sites, setSites] = useState([]);
   const [spareInvoices, setSpareInvoices] = useState([]);
+  const [services, setServices] = useState([]);
 
   // Stats
   const [totalDue, setTotalDue] = useState(0);
@@ -87,9 +174,11 @@ function ClientProfile() {
   const [payingCollection, setPayingCollection] = useState(null);
   const [quickForm, setQuickForm] = useState({
     title: '',
+    service_id: '',
     service_type: 'تركيب مصاعد',
     amount: '',
     description: '',
+    details: createEmptyQuotationDetails(),
     contract_type: 'maintenance',
     contract_id: '',
     contract_number: '',
@@ -112,7 +201,11 @@ function ClientProfile() {
     address: '',
     city: 'mecca',
     elevator_count: 1,
+    floor_count: '',
     elevator_type: '',
+    responsible_name: '',
+    responsible_phone: '',
+    elevator_codes: [''],
     notes: ''
   });
 
@@ -179,7 +272,8 @@ function ClientProfile() {
       fetchContracts(),
       fetchCollections(),
       fetchSites(),
-      fetchSpareInvoices()
+      fetchSpareInvoices(),
+      fetchServices()
     ]);
   }
 
@@ -267,12 +361,61 @@ function ClientProfile() {
     }
   }
 
+  function normalizeElevatorCodes(codes) {
+    if (Array.isArray(codes)) return codes.map(code => String(code || ''));
+    if (typeof codes === 'string') {
+      try {
+        const parsed = JSON.parse(codes);
+        if (Array.isArray(parsed)) return parsed.map(code => String(code || ''));
+      } catch {
+        return codes.split(',').map(code => code.trim()).filter(Boolean);
+      }
+    }
+    return [];
+  }
+
+  function getSiteFormDefaults() {
+    return {
+      site_name: '',
+      address: '',
+      city: 'mecca',
+      elevator_count: 1,
+      floor_count: '',
+      elevator_type: '',
+      responsible_name: '',
+      responsible_phone: '',
+      elevator_codes: [''],
+      notes: ''
+    };
+  }
+
   function handleSiteFormChange(field, value) {
     setSiteForm(prev => ({ ...prev, [field]: value }));
   }
 
+  function handleElevatorCodeChange(index, value) {
+    setSiteForm(prev => ({
+      ...prev,
+      elevator_codes: (prev.elevator_codes || ['']).map((code, i) => (i === index ? value : code))
+    }));
+  }
+
+  function addElevatorCodeField() {
+    setSiteForm(prev => ({
+      ...prev,
+      elevator_codes: [...(prev.elevator_codes || []), '']
+    }));
+  }
+
+  function removeElevatorCodeField(index) {
+    setSiteForm(prev => {
+      const nextCodes = (prev.elevator_codes || []).filter((_, i) => i !== index);
+      return { ...prev, elevator_codes: nextCodes.length ? nextCodes : [''] };
+    });
+  }
+
   function resetSiteForm() {
-    setSiteForm({ site_name: '', address: '', city: 'mecca', elevator_count: 1, elevator_type: '', notes: '' });
+    setSiteForm(getSiteFormDefaults());
   }
 
   function openAddSiteModal() {
@@ -282,13 +425,18 @@ function ClientProfile() {
   }
 
   function openEditSiteModal(site) {
+    const elevatorCodes = normalizeElevatorCodes(site.elevator_codes);
     setEditingSite(site);
     setSiteForm({
       site_name: site.site_name || '',
       address: site.address || '',
       city: site.city || 'mecca',
       elevator_count: site.elevator_count || 1,
+      floor_count: site.floor_count || '',
       elevator_type: site.elevator_type || '',
+      responsible_name: site.responsible_name || '',
+      responsible_phone: site.responsible_phone || '',
+      elevator_codes: elevatorCodes.length ? elevatorCodes : [''],
       notes: site.notes || ''
     });
     setShowSiteModal(true);
@@ -312,7 +460,11 @@ function ClientProfile() {
         address: siteForm.address || null,
         city: siteForm.city,
         elevator_count: parseInt(siteForm.elevator_count) || 1,
+        floor_count: parseInt(siteForm.floor_count) || 0,
         elevator_type: siteForm.elevator_type || null,
+        responsible_name: siteForm.responsible_name || null,
+        responsible_phone: siteForm.responsible_phone || null,
+        elevator_codes: (siteForm.elevator_codes || []).map(code => String(code).trim()).filter(Boolean),
         notes: siteForm.notes || null
       };
 
@@ -329,6 +481,20 @@ function ClientProfile() {
       alert('حدث خطأ أثناء حفظ الموقع');
     } finally {
       setSavingSite(false);
+    }
+  }
+
+  async function fetchServices() {
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .neq('is_active', false)
+        .order('name');
+      if (error) throw error;
+      setServices(data || []);
+    } catch (err) {
+      console.error('خطأ في جلب الخدمات:', err);
     }
   }
 
@@ -358,9 +524,11 @@ function ClientProfile() {
     const today = new Date().toISOString().slice(0, 10);
     setQuickForm({
       title: '',
+      service_id: '',
       service_type: type === 'contract' ? 'صيانة مصاعد' : 'تركيب مصاعد',
       amount: '',
       description: '',
+      details: createEmptyQuotationDetails(),
       contract_type: 'maintenance',
       contract_id: '',
       contract_number: '',
@@ -377,6 +545,34 @@ function ClientProfile() {
   function openQuickModal(type) {
     resetQuickForm(type);
     setQuickModal(type);
+  }
+
+  function buildQuickQuotationDescription() {
+    return JSON.stringify({
+      plainDescription: quickForm.description,
+      details: quickForm.details || createEmptyQuotationDetails()
+    });
+  }
+
+  function handleQuickQuotationDetailChange(section, field, value) {
+    setQuickForm(prev => {
+      const details = {
+        ...(prev.details || createEmptyQuotationDetails()),
+        [section]: {
+          ...((prev.details || {})[section] || {}),
+          [field]: value
+        }
+      };
+      const next = { ...prev, details };
+
+      if (section === 'financial' && (field === 'price_before_vat' || field === 'vat_amount')) {
+        const price = parseFloat(details.financial?.price_before_vat) || 0;
+        const vat = parseFloat(details.financial?.vat_amount) || 0;
+        if (price || vat) next.amount = (price + vat).toFixed(2);
+      }
+
+      return next;
+    });
   }
 
   function closeQuickModal() {
@@ -404,18 +600,26 @@ function ClientProfile() {
 
       if (quickModal === 'quotation') {
         const quotationNumber = await generatePrefixedNumber('quotations', 'quotation_number', 'QT');
-        const { error } = await supabase.from('quotations').insert({
+        const selectedService = services.find(service => service.id === quickForm.service_id);
+        const quotationPayload = {
           quotation_number: quotationNumber,
           client_id: id,
-          service_type: quickForm.service_type,
+          service_id: quickForm.service_id || null,
+          service_type: selectedService?.name || quickForm.service_type || quickForm.title,
           title: quickForm.title || quickForm.service_type,
-          description: quickForm.description,
+          description: buildQuickQuotationDescription(),
           amount,
           status: 'pending',
           branch,
           notes: quickForm.notes,
           created_by: profile?.id
-        });
+        };
+        let { error } = await supabase.from('quotations').insert(quotationPayload);
+        if (error?.message?.includes('service_id')) {
+          const { service_id, ...payloadWithoutServiceId } = quotationPayload;
+          const fallback = await supabase.from('quotations').insert(payloadWithoutServiceId);
+          error = fallback.error;
+        }
         if (error) throw error;
         await fetchQuotations();
         setActiveTab('quotations');
@@ -921,6 +1125,7 @@ function ClientProfile() {
                     const remainingAmount = activeMaintenance
                       ? (parseFloat(activeMaintenance.total_amount) || 0) - paidAmount
                       : 0;
+                    const elevatorCodes = normalizeElevatorCodes(site.elevator_codes).filter(Boolean);
 
                     return (
                     <div key={site.id} className="card">
@@ -960,12 +1165,46 @@ function ClientProfile() {
                           <span className="badge badge-secondary">
                             {site.elevator_count || 0} مصعد
                           </span>
+                          {!!site.floor_count && (
+                            <span className="badge badge-secondary">
+                              {site.floor_count} دور
+                            </span>
+                          )}
                           {site.elevator_type && (
                             <span className="badge badge-warning">
                               {site.elevator_type}
                             </span>
                           )}
                         </div>
+                        <div className="form-row-3 mt-16">
+                          <div>
+                            <span className="form-label">العميل الأساسي</span>
+                            <p className="font-bold">{client?.name || '-'}</p>
+                          </div>
+                          <div>
+                            <span className="form-label">رقم العميل</span>
+                            <p className="font-bold">{client?.phone || '-'}</p>
+                          </div>
+                          <div>
+                            <span className="form-label">مسؤول المبنى</span>
+                            <p className="font-bold">
+                              {site.responsible_name || '-'}
+                              {site.responsible_phone ? ` - ${site.responsible_phone}` : ''}
+                            </p>
+                          </div>
+                        </div>
+                        {elevatorCodes.length > 0 && (
+                          <div className="mt-16">
+                            <span className="form-label">أكواد المصاعد</span>
+                            <div className="flex gap-8 mt-8" style={{ flexWrap: 'wrap' }}>
+                              {elevatorCodes.map((code, index) => (
+                                <span key={`${site.id}-code-${index}`} className="badge badge-info">
+                                  {code}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         {site.notes && (
                           <p className="text-muted mt-16">{site.notes}</p>
                         )}
@@ -1149,12 +1388,32 @@ function ClientProfile() {
                       </div>
                       <div className="form-group">
                         <label className="form-label">نوع الخدمة *</label>
-                        <input
-                          className="form-input"
-                          value={quickForm.service_type}
-                          onChange={(e) => setQuickForm({ ...quickForm, service_type: e.target.value })}
-                          required
-                        />
+                        {quickModal === 'quotation' ? (
+                          <select
+                            className="form-select"
+                            value={quickForm.service_id}
+                            onChange={(e) => {
+                              const selectedService = services.find(service => service.id === e.target.value);
+                              setQuickForm({
+                                ...quickForm,
+                                service_id: e.target.value,
+                                service_type: selectedService?.name || quickForm.service_type
+                              });
+                            }}
+                          >
+                            <option value="">اختر الخدمة</option>
+                            {services.map(service => (
+                              <option key={service.id} value={service.id}>{service.name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            className="form-input"
+                            value={quickForm.service_type}
+                            onChange={(e) => setQuickForm({ ...quickForm, service_type: e.target.value })}
+                            required
+                          />
+                        )}
                       </div>
                     </div>
                     <div className="form-row">
@@ -1193,12 +1452,37 @@ function ClientProfile() {
 
                 {quickModal === 'quotation' && (
                   <>
+                    {QUOTATION_DETAIL_SECTIONS.map(section => (
+                      <div className="card mb-24" key={section.key}>
+                        <div className="card-header">
+                          <h3 className="card-title">{section.title}</h3>
+                        </div>
+                        <div className="card-body">
+                          <div className="form-row-3">
+                            {section.fields.map(([field, label, type = 'text']) => (
+                              <div className="form-group" key={`${section.key}-${field}`}>
+                                <label className="form-label">{label}</label>
+                                <input
+                                  type={type}
+                                  className="form-input"
+                                  value={quickForm.details?.[section.key]?.[field] || ''}
+                                  onChange={(e) => handleQuickQuotationDetailChange(section.key, field, e.target.value)}
+                                  min={type === 'number' ? '0' : undefined}
+                                  step={type === 'number' ? '0.01' : undefined}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                     <div className="form-group">
-                      <label className="form-label">الوصف</label>
+                      <label className="form-label">ملاحظات إضافية على العرض</label>
                       <textarea
                         className="form-textarea"
                         value={quickForm.description}
                         onChange={(e) => setQuickForm({ ...quickForm, description: e.target.value })}
+                        placeholder="أي شروط أو ملاحظات إضافية..."
                         rows={4}
                       />
                     </div>
@@ -1461,6 +1745,35 @@ function ClientProfile() {
             </div>
             <form onSubmit={handleSaveSite}>
               <div className="modal-body">
+                <div className="card mb-24">
+                  <div className="card-header">
+                    <h3 className="card-title">بيانات العميل الأساسية</h3>
+                  </div>
+                  <div className="card-body">
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">اسم العميل الأساسي</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={client?.name || ''}
+                          readOnly
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">رقم العميل الأساسي</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={client?.phone || ''}
+                          readOnly
+                        />
+                      </div>
+                    </div>
+                    <p className="text-muted" style={{ margin: 0 }}>هذه البيانات من ملف العميل ولا يتم تعديلها من بيانات المبنى.</p>
+                  </div>
+                </div>
+
                 <div className="form-group">
                   <label className="form-label">اسم الموقع *</label>
                   <input
@@ -1499,6 +1812,29 @@ function ClientProfile() {
 
                 <div className="form-row">
                   <div className="form-group">
+                    <label className="form-label">اسم مسؤول المبنى</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={siteForm.responsible_name}
+                      onChange={(e) => handleSiteFormChange('responsible_name', e.target.value)}
+                      placeholder="اسم الشخص المسؤول في المبنى"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">رقم مسؤول المبنى</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={siteForm.responsible_phone}
+                      onChange={(e) => handleSiteFormChange('responsible_phone', e.target.value)}
+                      placeholder="رقم التواصل مع مسؤول المبنى"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row-3">
+                  <div className="form-group">
                     <label className="form-label">عدد المصاعد</label>
                     <input
                       type="number"
@@ -1506,6 +1842,16 @@ function ClientProfile() {
                       value={siteForm.elevator_count}
                       onChange={(e) => handleSiteFormChange('elevator_count', e.target.value)}
                       min="1"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">عدد الأدوار بالمبنى</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={siteForm.floor_count}
+                      onChange={(e) => handleSiteFormChange('floor_count', e.target.value)}
+                      min="0"
                     />
                   </div>
                   <div className="form-group">
@@ -1517,6 +1863,38 @@ function ClientProfile() {
                       onChange={(e) => handleSiteFormChange('elevator_type', e.target.value)}
                       placeholder="مثال: ركاب / بضائع"
                     />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <div className="flex-between mb-8">
+                    <label className="form-label" style={{ margin: 0 }}>أكواد المصاعد بالمبنى</label>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={addElevatorCodeField}>
+                      <Plus size={14} />
+                      إضافة كود
+                    </button>
+                  </div>
+                  <div className="grid-2">
+                    {(siteForm.elevator_codes || ['']).map((code, index) => (
+                      <div key={`elevator-code-${index}`} className="flex gap-8">
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={code}
+                          onChange={(e) => handleElevatorCodeChange(index, e.target.value)}
+                          placeholder={`كود المصعد ${index + 1}`}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm text-danger"
+                          onClick={() => removeElevatorCodeField(index)}
+                          disabled={(siteForm.elevator_codes || []).length <= 1}
+                          title="حذف الكود"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
 

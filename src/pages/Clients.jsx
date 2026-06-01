@@ -6,7 +6,7 @@ import { Users, Plus, Upload, Search, Phone, MapPin, DollarSign, X, MessageCircl
 import { formatSaudiLocalPhoneInput, isValidSaudiLocalPhone, openGoogleMaps, openWhatsApp } from '../lib/integrations';
 import Papa from 'papaparse';
 
-function Clients() {
+function Clients({ cityFilter: globalCityFilter = 'all' }) {
   const { profile } = useAuth();
   const navigate = useNavigate();
 
@@ -40,6 +40,10 @@ function Clients() {
   useEffect(() => {
     fetchClients();
   }, []);
+
+  useEffect(() => {
+    setCityFilter(globalCityFilter || 'all');
+  }, [globalCityFilter]);
 
   async function fetchClients() {
     try {

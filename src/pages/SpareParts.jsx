@@ -4,7 +4,7 @@ import { supabase, formatCurrency, formatDateShort, CITIES, PAYMENT_METHODS, log
 import { useAuth } from '../contexts/AuthContext';
 import { Package, Plus, FileText, Search, Edit, Trash2, AlertTriangle, X, Eye, Download, Printer } from 'lucide-react';
 
-function SpareParts() {
+function SpareParts({ cityFilter = 'all' }) {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const [parts, setParts] = useState([]);
@@ -38,6 +38,11 @@ function SpareParts() {
     fetchParts();
     fetchInvoices();
   }, []);
+
+  useEffect(() => {
+    setBranchFilter(cityFilter === 'all' ? '' : cityFilter);
+    setInvoiceBranchFilter(cityFilter === 'all' ? '' : cityFilter);
+  }, [cityFilter]);
 
   async function fetchParts() {
     try {
