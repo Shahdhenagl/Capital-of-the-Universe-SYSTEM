@@ -148,8 +148,8 @@ function SpareParts({ cityFilter = 'all' }) {
   // --- Filtering ---
   const filteredParts = parts.filter(part => {
     const matchesSearch = !searchTerm ||
-      part.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      part.part_number?.toLowerCase().includes(searchTerm.toLowerCase());
+      (part.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (part.part_number || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesBranch = !branchFilter || part.branch === branchFilter;
     const matchesStock = !stockFilter ||
       (stockFilter === 'low' && part.quantity <= (part.min_quantity || 0)) ||
@@ -164,10 +164,10 @@ function SpareParts({ cityFilter = 'all' }) {
     const fromDate = invoiceDateFrom ? new Date(`${invoiceDateFrom}T00:00:00`) : null;
     const toDate = invoiceDateTo ? new Date(`${invoiceDateTo}T23:59:59`) : null;
     const matchesSearch = !query ||
-      invoice.invoice_number?.toLowerCase().includes(query) ||
-      invoice.clients?.name?.toLowerCase().includes(query) ||
-      invoice.clients?.phone?.toLowerCase().includes(query) ||
-      invoice.notes?.toLowerCase().includes(query);
+      (invoice.invoice_number || '').toLowerCase().includes(query) ||
+      (invoice.clients?.name || '').toLowerCase().includes(query) ||
+      (invoice.clients?.phone || '').toLowerCase().includes(query) ||
+      (invoice.notes || '').toLowerCase().includes(query);
     const matchesBranch = !invoiceBranchFilter || invoice.branch === invoiceBranchFilter;
     const matchesPayment = !invoicePaymentFilter || invoice.payment_method === invoicePaymentFilter;
     const matchesFrom = !fromDate || (invoiceDate && invoiceDate >= fromDate);
@@ -178,10 +178,10 @@ function SpareParts({ cityFilter = 'all' }) {
   const filteredSuppliers = suppliers.filter(sup => {
     const query = supplierSearch.toLowerCase();
     const matchesSearch = !query ||
-      sup.name?.toLowerCase().includes(query) ||
-      sup.company_name?.toLowerCase().includes(query) ||
-      sup.phone?.toLowerCase().includes(query) ||
-      sup.notes?.toLowerCase().includes(query);
+      (sup.name || '').toLowerCase().includes(query) ||
+      (sup.company_name || '').toLowerCase().includes(query) ||
+      (sup.phone || '').toLowerCase().includes(query) ||
+      (sup.notes || '').toLowerCase().includes(query);
     const matchesCity = !supplierCityFilter || sup.city === supplierCityFilter;
     return matchesSearch && matchesCity;
   });
@@ -189,10 +189,10 @@ function SpareParts({ cityFilter = 'all' }) {
   const filteredPurchases = purchases.filter(p => {
     const query = purchaseSearch.toLowerCase();
     const matchesSearch = !query ||
-      p.purchase_number?.toLowerCase().includes(query) ||
-      p.suppliers?.name?.toLowerCase().includes(query) ||
-      p.suppliers?.phone?.toLowerCase().includes(query) ||
-      p.notes?.toLowerCase().includes(query);
+      (p.purchase_number || '').toLowerCase().includes(query) ||
+      (p.suppliers?.name || '').toLowerCase().includes(query) ||
+      (p.suppliers?.phone || '').toLowerCase().includes(query) ||
+      (p.notes || '').toLowerCase().includes(query);
     const matchesBranch = !purchaseBranchFilter || p.branch === purchaseBranchFilter;
     const matchesPayment = !purchasePaymentFilter || p.payment_method === purchasePaymentFilter;
     return matchesSearch && matchesBranch && matchesPayment;
