@@ -19,6 +19,7 @@ import Revenue from './pages/Revenue';
 import SpareParts from './pages/SpareParts';
 import SparePartsInvoice from './pages/SparePartsInvoice';
 import SparePartsInvoiceDetails from './pages/SparePartsInvoiceDetails';
+import SparePartsPurchaseInvoice from './pages/SparePartsPurchaseInvoice';
 import Employees from './pages/Employees';
 import EmployeeProfile from './pages/EmployeeProfile';
 import Payroll from './pages/Payroll';
@@ -63,6 +64,7 @@ function AppRoutes() {
               <Route path="/spare-parts" element={<ProtectedRoute permission="spare_parts.view"><SpareParts cityFilter={cityFilter} /></ProtectedRoute>} />
               <Route path="/spare-parts/invoice" element={<ProtectedRoute permission="spare_parts.view"><SparePartsInvoice /></ProtectedRoute>} />
               <Route path="/spare-parts/invoices/:id" element={<ProtectedRoute permission="spare_parts.view"><SparePartsInvoiceDetails /></ProtectedRoute>} />
+              <Route path="/spare-parts/purchase-invoice" element={<ProtectedRoute permission="spare_parts.view"><SparePartsPurchaseInvoice /></ProtectedRoute>} />
               <Route path="/payroll" element={<ProtectedRoute permission="payroll.view"><Payroll cityFilter={cityFilter} /></ProtectedRoute>} />
               <Route path="/employees" element={<ProtectedRoute permission="employees.view"><Employees cityFilter={cityFilter} /></ProtectedRoute>} />
               <Route path="/employees/:id" element={<ProtectedRoute permission="employees.view"><EmployeeProfile /></ProtectedRoute>} />
