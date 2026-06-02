@@ -11,6 +11,7 @@ function SparePartsInvoice() {
   const location = useLocation();
   const [clients, setClients] = useState([]);
   const [spareParts, setSpareParts] = useState([]);
+  const [purchaseItems, setPurchaseItems] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -53,17 +54,31 @@ function SparePartsInvoice() {
   async function fetchData() {
     try {
       setLoading(true);
-      const [clientsRes, partsRes] = await Promise.all([
+      const [clientsRes, partsRes, purchaseItemsRes] = await Promise.all([
         supabase.from('clients').select('id, name, phone').neq('status', 'inactive').order('name'),
-        supabase.from('spare_parts').select('*').gt('quantity', 0).order('name')
+        supabase.from('spare_parts').select('*').gt('quantity', 0).order('name'),
+        supabase.from('spare_parts_purchase_items').select('*, spare_parts_purchases(created_at)')
       ]);
       setClients(clientsRes.data || []);
       setSpareParts(partsRes.data || []);
+      setPurchaseItems(purchaseItemsRes.data || []);
     } catch (err) {
       console.error('Error fetching data:', err);
     } finally {
       setLoading(false);
     }
+  }
+
+  function getPartAveragePurchasePrice(partId, defaultBuyPrice) {
+    const partPurchases = purchaseItems.filter(item => item.spare_part_id === partId);
+    if (partPurchases.length > 0) {
+      const totalQty = partPurchases.reduce((sum, item) => sum + (item.quantity || 0), 0);
+      const totalCost = partPurchases.reduce((sum, item) => sum + (item.quantity || 0) * (item.unit_buy_price || 0), 0);
+      if (totalQty > 0) {
+        return totalCost / totalQty;
+      }
+    }
+    return defaultBuyPrice;
   }
 
   function addItem() {
@@ -87,7 +102,8 @@ function SparePartsInvoice() {
       const part = spareParts.find(p => p.id === value);
       if (part) {
         updated[index].unit_price = part.sell_price || 0;
-        updated[index].buy_price = part.buy_price || 0;
+        const avgPrice = getPartAveragePurchasePrice(part.id, part.buy_price || 0);
+        updated[index].buy_price = avgPrice;
         setPartSearchTexts(prev => ({ ...prev, [index]: part.name }));
       } else {
         setPartSearchTexts(prev => ({ ...prev, [index]: '' }));
