@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, formatCurrency, CITIES, PAYMENT_METHODS, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { FileText, Plus, Trash2, Save, ArrowRight, Package, DollarSign } from 'lucide-react';
+import { FileText, Plus, Trash2, Save, ArrowRight, Package, DollarSign, X } from 'lucide-react';
 import { notifyIntegrations } from '../lib/integrations';
 
 function SparePartsPurchaseInvoice() {
@@ -21,6 +21,36 @@ function SparePartsPurchaseInvoice() {
     { spare_part_id: '', quantity: 1, unit_price: 0 }
   ]);
 
+  // Searchable supplier state
+  const [supplierSearchText, setSupplierSearchText] = useState('');
+  const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
+
+  // Searchable spare parts state
+  const [partSearchTexts, setPartSearchTexts] = useState({});
+  const [activeDropdownRow, setActiveDropdownRow] = useState(null);
+
+  // Add Part Modal state
+  const [showAddPartModal, setShowAddPartModal] = useState(false);
+  const [newPartForm, setNewPartForm] = useState({
+    name: '',
+    part_number: '',
+    buy_price: '',
+    sell_price: '',
+    min_quantity: '5',
+    category: '',
+    branch: 'mecca',
+    notes: ''
+  });
+  const [partSaving, setPartSaving] = useState(false);
+
+  // Set supplier search text if a supplier is already selected or on data fetch
+  useEffect(() => {
+    if (supplierId && suppliers.length > 0) {
+      const sup = suppliers.find(s => s.id === supplierId);
+      if (sup) setSupplierSearchText(sup.name);
+    }
+  }, [supplierId, suppliers]);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -29,7 +59,7 @@ function SparePartsPurchaseInvoice() {
     try {
       setLoading(true);
       const [suppliersRes, partsRes] = await Promise.all([
-        supabase.from('suppliers').select('id, name').order('name'),
+        supabase.from('suppliers').select('id, name, phone').order('name'),
         supabase.from('spare_parts').select('*').order('name')
       ]);
       setSuppliers(suppliersRes.data || []);
@@ -48,6 +78,10 @@ function SparePartsPurchaseInvoice() {
   function removeItem(index) {
     if (items.length <= 1) return;
     setItems(items.filter((_, i) => i !== index));
+    // clean up row search text
+    const updatedTexts = { ...partSearchTexts };
+    delete updatedTexts[index];
+    setPartSearchTexts(updatedTexts);
   }
 
   function updateItem(index, field, value) {
@@ -58,11 +92,71 @@ function SparePartsPurchaseInvoice() {
       const part = spareParts.find(p => p.id === value);
       if (part) {
         updated[index].unit_price = part.buy_price || 0;
+        setPartSearchTexts(prev => ({ ...prev, [index]: part.name }));
+      } else {
+        setPartSearchTexts(prev => ({ ...prev, [index]: '' }));
       }
     }
 
     setItems(updated);
   }
+
+  async function handleCreatePart(e) {
+    e.preventDefault();
+    if (!newPartForm.name) {
+      alert('يرجى كتابة اسم القطعة');
+      return;
+    }
+    setPartSaving(true);
+    try {
+      const record = {
+        name: newPartForm.name,
+        part_number: newPartForm.part_number,
+        buy_price: parseFloat(newPartForm.buy_price) || 0,
+        sell_price: parseFloat(newPartForm.sell_price) || 0,
+        quantity: 0, // initially 0, will increase on purchase invoice!
+        min_quantity: parseInt(newPartForm.min_quantity) || 0,
+        category: newPartForm.category,
+        branch: newPartForm.branch,
+        notes: newPartForm.notes
+      };
+
+      const { data, error } = await supabase
+        .from('spare_parts')
+        .insert(record)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update state and close modal
+      setSpareParts(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+      setShowAddPartModal(false);
+      setNewPartForm({
+        name: '',
+        part_number: '',
+        buy_price: '',
+        sell_price: '',
+        min_quantity: '5',
+        category: '',
+        branch: 'mecca',
+        notes: ''
+      });
+      alert(`تم إضافة الصنف "${data.name}" بنجاح إلى المستودع، وهو متاح للاختيار الآن.`);
+    } catch (err) {
+      console.error('Error creating part inline:', err);
+      alert('حدث خطأ أثناء إضافة الصنف الجديد');
+    } finally {
+      setPartSaving(false);
+    }
+  }
+
+  const getPartSearchText = (index, partId) => {
+    if (partSearchTexts[index] !== undefined) return partSearchTexts[index];
+    if (!partId) return '';
+    const part = spareParts.find(p => p.id === partId);
+    return part ? part.name : '';
+  };
 
   const totalBuy = items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
 
@@ -250,19 +344,71 @@ function SparePartsPurchaseInvoice() {
         </div>
         <div className="card-body">
           <div className="form-row-3">
-            <div className="form-group">
+            <div className="form-group" style={{ position: 'relative' }}>
               <label className="form-label">المورد *</label>
-              <select
-                className="form-select"
-                value={supplierId}
-                onChange={(e) => setSupplierId(e.target.value)}
-                required
-              >
-                <option value="">اختر المورد</option>
-                {suppliers.map(sup => (
-                  <option key={sup.id} value={sup.id}>{sup.name}</option>
-                ))}
-              </select>
+              <div className="searchable-select-container">
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="ابحث باسم المورد أو الجوال..."
+                  value={supplierSearchText}
+                  onChange={(e) => {
+                    setSupplierSearchText(e.target.value);
+                    setShowSupplierDropdown(true);
+                  }}
+                  onFocus={() => setShowSupplierDropdown(true)}
+                  onBlur={() => {
+                    setTimeout(() => setShowSupplierDropdown(false), 250);
+                  }}
+                  required
+                />
+                {showSupplierDropdown && (
+                  <div className="searchable-dropdown-list" style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    left: 0,
+                    zIndex: 1000,
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '6px',
+                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)',
+                    marginTop: '4px'
+                  }}>
+                    {(() => {
+                      const filteredSuppliers = suppliers.filter(s => 
+                        (s.name || '').toLowerCase().includes(supplierSearchText.toLowerCase()) ||
+                        (s.phone || '').includes(supplierSearchText)
+                      );
+                      if (filteredSuppliers.length === 0) {
+                        return <div style={{ padding: '8px 12px', color: 'var(--text-muted)' }}>لا توجد نتائج</div>;
+                      }
+                      return filteredSuppliers.map(sup => (
+                        <div
+                          key={sup.id}
+                          style={{
+                            padding: '8px 12px',
+                            cursor: 'pointer',
+                            borderBottom: '1px solid var(--border)',
+                            background: supplierId === sup.id ? 'var(--bg-hover)' : 'transparent',
+                            color: 'var(--text-primary)'
+                          }}
+                          onMouseDown={() => {
+                            setSupplierId(sup.id);
+                            setSupplierSearchText(sup.name);
+                            setShowSupplierDropdown(false);
+                          }}
+                          className="dropdown-item"
+                        >
+                          {sup.name} {sup.phone ? `(${sup.phone})` : ''}
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="form-group">
               <label className="form-label">فرع التخزين والتحصيل</label>
@@ -293,15 +439,21 @@ function SparePartsPurchaseInvoice() {
       </div>
 
       <div className="card mb-24">
-        <div className="card-header">
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 className="card-title">
             <Package size={20} />
             أصناف القطع المشتراة
           </h3>
-          <button className="btn btn-primary btn-sm" onClick={addItem}>
-            <Plus size={16} />
-            إضافة قطعة
-          </button>
+          <div className="flex gap-8">
+            <button className="btn btn-secondary btn-sm" onClick={() => setShowAddPartModal(true)}>
+              <Plus size={16} />
+              إضافة قطعة جديدة للمستودع
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={addItem}>
+              <Plus size={16} />
+              إضافة قطعة للفاتورة
+            </button>
+          </div>
         </div>
         <div className="card-body">
           <table className="data-table">
@@ -317,19 +469,70 @@ function SparePartsPurchaseInvoice() {
             <tbody>
               {items.map((item, index) => (
                 <tr key={index}>
-                  <td>
-                    <select
-                      className="form-select"
-                      value={item.spare_part_id}
-                      onChange={(e) => updateItem(index, 'spare_part_id', e.target.value)}
-                    >
-                      <option value="">اختر القطعة</option>
-                      {spareParts.map(part => (
-                        <option key={part.id} value={part.id}>
-                          {part.name} ({part.part_number || '—'}) — متوفر حالياً: {part.quantity}
-                        </option>
-                      ))}
-                    </select>
+                  <td style={{ position: 'relative' }}>
+                    <div className="searchable-select-container">
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="ابحث باسم القطعة أو رقمها..."
+                        value={getPartSearchText(index, item.spare_part_id)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setPartSearchTexts(prev => ({ ...prev, [index]: val }));
+                          setActiveDropdownRow(index);
+                        }}
+                        onFocus={() => setActiveDropdownRow(index)}
+                        onBlur={() => {
+                          setTimeout(() => setActiveDropdownRow(null), 250);
+                        }}
+                      />
+                      {activeDropdownRow === index && (
+                        <div className="searchable-dropdown-list" style={{
+                          position: 'absolute',
+                          top: '100%',
+                          right: 0,
+                          left: 0,
+                          zIndex: 1000,
+                          maxHeight: '200px',
+                          overflowY: 'auto',
+                          background: 'var(--bg-secondary)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '6px',
+                          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)',
+                          marginTop: '4px'
+                        }}>
+                          {(() => {
+                            const searchText = partSearchTexts[index] || '';
+                            const filteredParts = spareParts.filter(part => 
+                              (part.name || '').toLowerCase().includes(searchText.toLowerCase()) ||
+                              (part.part_number || '').toLowerCase().includes(searchText.toLowerCase())
+                            );
+                            if (filteredParts.length === 0) {
+                              return <div style={{ padding: '8px 12px', color: 'var(--text-muted)' }}>لا توجد نتائج</div>;
+                            }
+                            return filteredParts.map(part => (
+                              <div
+                                key={part.id}
+                                style={{
+                                  padding: '8px 12px',
+                                  cursor: 'pointer',
+                                  borderBottom: '1px solid var(--border)',
+                                  background: item.spare_part_id === part.id ? 'var(--bg-hover)' : 'transparent',
+                                  color: 'var(--text-primary)'
+                                }}
+                                onMouseDown={() => {
+                                  updateItem(index, 'spare_part_id', part.id);
+                                  setActiveDropdownRow(null);
+                                }}
+                                className="dropdown-item"
+                              >
+                                {part.name} ({part.part_number || '—'}) — متوفر: {part.quantity}
+                              </div>
+                            ));
+                          })()}
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td>
                     <input
@@ -408,7 +611,125 @@ function SparePartsPurchaseInvoice() {
           إلغاء
         </button>
       </div>
+
+      {/* Add New Part Modal */}
+      {showAddPartModal && (
+        <div className="modal-backdrop">
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">إضافة صنف جديد للمستودع</h2>
+              <button className="modal-close" onClick={() => setShowAddPartModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleCreatePart}>
+              <div className="modal-body">
+                <div className="form-group mb-12">
+                  <label className="form-label">اسم القطعة *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={newPartForm.name}
+                    onChange={(e) => setNewPartForm({ ...newPartForm, name: e.target.value })}
+                    placeholder="مثال: تروس فوجي 5KW"
+                    required
+                  />
+                </div>
+                <div className="form-group mb-12">
+                  <label className="form-label">رقم القطعة (Part Number)</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={newPartForm.part_number}
+                    onChange={(e) => setNewPartForm({ ...newPartForm, part_number: e.target.value })}
+                    placeholder="مثال: FG-500-XT"
+                  />
+                </div>
+                <div className="form-row-2 mb-12">
+                  <div className="form-group">
+                    <label className="form-label">سعر الشراء الافتراضي (ر.س)</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={newPartForm.buy_price}
+                      onChange={(e) => setNewPartForm({ ...newPartForm, buy_price: e.target.value })}
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">سعر البيع المقترح (ر.س)</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={newPartForm.sell_price}
+                      onChange={(e) => setNewPartForm({ ...newPartForm, sell_price: e.target.value })}
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+                <div className="form-row-2 mb-12">
+                  <div className="form-group">
+                    <label className="form-label">حد الطلب الأدنى للمخزون</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={newPartForm.min_quantity}
+                      onChange={(e) => setNewPartForm({ ...newPartForm, min_quantity: e.target.value })}
+                      placeholder="5"
+                      min="0"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">فرع التواجد الأولي</label>
+                    <select
+                      className="form-select"
+                      value={newPartForm.branch}
+                      onChange={(e) => setNewPartForm({ ...newPartForm, branch: e.target.value })}
+                    >
+                      <option value="mecca">مكة المكرمة</option>
+                      <option value="jeddah">جدة</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="form-group mb-12">
+                  <label className="form-label">الفئة (التصنيف)</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={newPartForm.category}
+                    onChange={(e) => setNewPartForm({ ...newPartForm, category: e.target.value })}
+                    placeholder="مثال: محركات، لوحات، كبائن"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">ملاحظات الصنف</label>
+                  <textarea
+                    className="form-textarea"
+                    value={newPartForm.notes}
+                    onChange={(e) => setNewPartForm({ ...newPartForm, notes: e.target.value })}
+                    rows={2}
+                    placeholder="شروط ضمان المورد، أو تفاصيل تقنية إضافية..."
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="submit" className="btn btn-success" disabled={partSaving}>
+                  {partSaving ? 'جاري الحفظ...' : 'حفظ الصنف الجديد'}
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowAddPartModal(false)}>
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
+
   );
 }
 

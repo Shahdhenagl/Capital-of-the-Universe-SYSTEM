@@ -17,6 +17,7 @@ function SpareParts({ cityFilter = 'all' }) {
   const [suppliers, setSuppliers] = useState([]);
   const [purchases, setPurchases] = useState([]); // Purchase invoices
   const [salesItems, setSalesItems] = useState([]); // All sold items for analytics
+  const [purchaseItems, setPurchaseItems] = useState([]); // All purchased items for pricing stats
   const [loading, setLoading] = useState(true);
 
   // Filters for parts
@@ -92,7 +93,8 @@ function SpareParts({ cityFilter = 'all' }) {
         fetchInvoices(),
         fetchSuppliers(),
         fetchPurchases(),
-        fetchSalesItems()
+        fetchSalesItems(),
+        fetchPurchaseItems()
       ]);
     } catch (err) {
       console.error('Error fetching all spare parts modules data:', err);
@@ -143,6 +145,14 @@ function SpareParts({ cityFilter = 'all' }) {
       .select('*, spare_parts(name, part_number)');
     if (error && error.code !== 'PGRST116') throw error;
     setSalesItems(data || []);
+  }
+
+  async function fetchPurchaseItems() {
+    const { data, error } = await supabase
+      .from('spare_parts_purchase_items')
+      .select('*, spare_parts_purchases(created_at)');
+    if (error && error.code !== 'PGRST116') throw error;
+    setPurchaseItems(data || []);
   }
 
   // --- Filtering ---
@@ -213,6 +223,33 @@ function SpareParts({ cityFilter = 'all' }) {
   function getMargin(part) {
     if (!part.buy_price || part.buy_price === 0) return '0%';
     return ((part.sell_price - part.buy_price) / part.buy_price * 100).toFixed(1) + '%';
+  }
+
+  function getPartPurchaseStats(partId, defaultBuyPrice) {
+    const partPurchases = purchaseItems.filter(item => item.spare_part_id === partId);
+    
+    // Last Purchase Price
+    let lastPrice = defaultBuyPrice;
+    if (partPurchases.length > 0) {
+      const sorted = [...partPurchases].sort((a, b) => {
+        const dateA = new Date(a.spare_parts_purchases?.created_at || 0);
+        const dateB = new Date(b.spare_parts_purchases?.created_at || 0);
+        return dateB - dateA;
+      });
+      lastPrice = sorted[0].unit_buy_price;
+    }
+    
+    // Average Purchase Price
+    let averagePrice = defaultBuyPrice;
+    if (partPurchases.length > 0) {
+      const totalQty = partPurchases.reduce((sum, item) => sum + (item.quantity || 0), 0);
+      const totalCost = partPurchases.reduce((sum, item) => sum + (item.quantity || 0) * (item.unit_buy_price || 0), 0);
+      if (totalQty > 0) {
+        averagePrice = totalCost / totalQty;
+      }
+    }
+    
+    return { lastPrice, averagePrice };
   }
 
   // --- CSV Export ---
@@ -654,7 +691,9 @@ function SpareParts({ cityFilter = 'all' }) {
                   <tr>
                     <th>اسم القطعة</th>
                     <th>رقم القطعة</th>
-                    <th>سعر الشراء</th>
+                    <th>سعر الشراء الافتراضي</th>
+                    <th>آخر سعر شراء</th>
+                    <th>متوسط سعر الشراء</th>
                     <th>سعر البيع</th>
                     <th>هامش الربح</th>
                     <th>الكمية المتوفرة</th>
@@ -663,36 +702,41 @@ function SpareParts({ cityFilter = 'all' }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredParts.map(part => (
-                    <tr key={part.id}>
-                      <td className="font-semibold">{part.name}</td>
-                      <td>{part.part_number || '—'}</td>
-                      <td>{formatCurrency(part.buy_price)}</td>
-                      <td>{formatCurrency(part.sell_price)}</td>
-                      <td>
-                        <span className="text-success font-semibold">{getMargin(part)}</span>
-                      </td>
-                      <td>
-                        <span className={`flex items-center gap-8 ${part.quantity <= (part.min_quantity || 0) ? 'text-danger font-bold' : ''}`}>
-                          {part.quantity} حبة
-                          {part.quantity <= (part.min_quantity || 0) && (
-                            <AlertTriangle size={14} className="text-danger" title="مخزون منخفض!" />
-                          )}
-                        </span>
-                      </td>
-                      <td>{CITIES[part.branch] || part.branch}</td>
-                      <td>
-                        <div className="flex gap-8">
-                          <button className="btn btn-ghost btn-sm" onClick={() => openEditPartModal(part)}>
-                            <Edit size={16} />
-                          </button>
-                          <button className="btn btn-ghost btn-sm text-danger" onClick={() => handleDeletePart(part)}>
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredParts.map(part => {
+                    const { lastPrice, averagePrice } = getPartPurchaseStats(part.id, part.buy_price);
+                    return (
+                      <tr key={part.id}>
+                        <td className="font-semibold">{part.name}</td>
+                        <td>{part.part_number || '—'}</td>
+                        <td>{formatCurrency(part.buy_price)}</td>
+                        <td>{formatCurrency(lastPrice)}</td>
+                        <td>{formatCurrency(averagePrice)}</td>
+                        <td>{formatCurrency(part.sell_price)}</td>
+                        <td>
+                          <span className="text-success font-semibold">{getMargin(part)}</span>
+                        </td>
+                        <td>
+                          <span className={`flex items-center gap-8 ${part.quantity <= (part.min_quantity || 0) ? 'text-danger font-bold' : ''}`}>
+                            {part.quantity} حبة
+                            {part.quantity <= (part.min_quantity || 0) && (
+                              <AlertTriangle size={14} className="text-danger" title="مخزون منخفض!" />
+                            )}
+                          </span>
+                        </td>
+                        <td>{CITIES[part.branch] || part.branch}</td>
+                        <td>
+                          <div className="flex gap-8">
+                            <button className="btn btn-ghost btn-sm" onClick={() => openEditPartModal(part)}>
+                              <Edit size={16} />
+                            </button>
+                            <button className="btn btn-ghost btn-sm text-danger" onClick={() => handleDeletePart(part)}>
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
@@ -1458,23 +1502,30 @@ function SpareParts({ cityFilter = 'all' }) {
                   <tr>
                     <th>اسم الصنف</th>
                     <th>رقم الصنف</th>
-                    <th>سعر الشراء</th>
+                    <th>سعر الشراء الافتراضي</th>
+                    <th>آخر سعر شراء</th>
+                    <th>متوسط سعر الشراء</th>
                     <th>سعر البيع</th>
                     <th>الكمية المتوفرة</th>
                     <th>الفرع</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredParts.map(part => (
-                    <tr key={part.id}>
-                      <td>{part.name}</td>
-                      <td>{part.part_number || '-'}</td>
-                      <td>{formatCurrency(part.buy_price)}</td>
-                      <td>{formatCurrency(part.sell_price)}</td>
-                      <td>{part.quantity} حبة</td>
-                      <td>{CITIES[part.branch] || part.branch}</td>
-                    </tr>
-                  ))}
+                  {filteredParts.map(part => {
+                    const { lastPrice, averagePrice } = getPartPurchaseStats(part.id, part.buy_price);
+                    return (
+                      <tr key={part.id}>
+                        <td>{part.name}</td>
+                        <td>{part.part_number || '-'}</td>
+                        <td>{formatCurrency(part.buy_price)}</td>
+                        <td>{formatCurrency(lastPrice)}</td>
+                        <td>{formatCurrency(averagePrice)}</td>
+                        <td>{formatCurrency(part.sell_price)}</td>
+                        <td>{part.quantity} حبة</td>
+                        <td>{CITIES[part.branch] || part.branch}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </>

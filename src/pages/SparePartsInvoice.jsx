@@ -22,6 +22,22 @@ function SparePartsInvoice() {
     { spare_part_id: '', quantity: 1, unit_price: 0, buy_price: 0 }
   ]);
 
+  // Searchable client state
+  const [clientSearchText, setClientSearchText] = useState('');
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
+
+  // Searchable spare parts state
+  const [partSearchTexts, setPartSearchTexts] = useState({});
+  const [activeDropdownRow, setActiveDropdownRow] = useState(null);
+
+  // Set client search text if a client is selected
+  useEffect(() => {
+    if (clientId && clients.length > 0) {
+      const client = clients.find(c => c.id === clientId);
+      if (client) setClientSearchText(client.name);
+    }
+  }, [clientId, clients]);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -38,7 +54,7 @@ function SparePartsInvoice() {
     try {
       setLoading(true);
       const [clientsRes, partsRes] = await Promise.all([
-        supabase.from('clients').select('id, name').neq('status', 'inactive').order('name'),
+        supabase.from('clients').select('id, name, phone').neq('status', 'inactive').order('name'),
         supabase.from('spare_parts').select('*').gt('quantity', 0).order('name')
       ]);
       setClients(clientsRes.data || []);
@@ -57,6 +73,10 @@ function SparePartsInvoice() {
   function removeItem(index) {
     if (items.length <= 1) return;
     setItems(items.filter((_, i) => i !== index));
+    // clean up search text
+    const updatedTexts = { ...partSearchTexts };
+    delete updatedTexts[index];
+    setPartSearchTexts(updatedTexts);
   }
 
   function updateItem(index, field, value) {
@@ -68,11 +88,21 @@ function SparePartsInvoice() {
       if (part) {
         updated[index].unit_price = part.sell_price || 0;
         updated[index].buy_price = part.buy_price || 0;
+        setPartSearchTexts(prev => ({ ...prev, [index]: part.name }));
+      } else {
+        setPartSearchTexts(prev => ({ ...prev, [index]: '' }));
       }
     }
 
     setItems(updated);
   }
+
+  const getPartSearchText = (index, partId) => {
+    if (partSearchTexts[index] !== undefined) return partSearchTexts[index];
+    if (!partId) return '';
+    const part = spareParts.find(p => p.id === partId);
+    return part ? part.name : '';
+  };
 
   const totalSell = items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
   const totalCost = items.reduce((sum, item) => sum + (item.buy_price * item.quantity), 0);
@@ -247,18 +277,71 @@ function SparePartsInvoice() {
         </div>
         <div className="card-body">
           <div className="form-row-3">
-            <div className="form-group">
+            <div className="form-group" style={{ position: 'relative' }}>
               <label className="form-label">العميل *</label>
-              <select
-                className="form-select"
-                value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
-              >
-                <option value="">اختر العميل</option>
-                {clients.map(client => (
-                  <option key={client.id} value={client.id}>{client.name}</option>
-                ))}
-              </select>
+              <div className="searchable-select-container">
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="ابحث باسم العميل أو الجوال..."
+                  value={clientSearchText}
+                  onChange={(e) => {
+                    setClientSearchText(e.target.value);
+                    setShowClientDropdown(true);
+                  }}
+                  onFocus={() => setShowClientDropdown(true)}
+                  onBlur={() => {
+                    setTimeout(() => setShowClientDropdown(false), 250);
+                  }}
+                  required
+                />
+                {showClientDropdown && (
+                  <div className="searchable-dropdown-list" style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    left: 0,
+                    zIndex: 1000,
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '6px',
+                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)',
+                    marginTop: '4px'
+                  }}>
+                    {(() => {
+                      const filteredClients = clients.filter(c => 
+                        (c.name || '').toLowerCase().includes(clientSearchText.toLowerCase()) ||
+                        (c.phone || '').includes(clientSearchText)
+                      );
+                      if (filteredClients.length === 0) {
+                        return <div style={{ padding: '8px 12px', color: 'var(--text-muted)' }}>لا توجد نتائج</div>;
+                      }
+                      return filteredClients.map(c => (
+                        <div
+                          key={c.id}
+                          style={{
+                            padding: '8px 12px',
+                            cursor: 'pointer',
+                            borderBottom: '1px solid var(--border)',
+                            background: clientId === c.id ? 'var(--bg-hover)' : 'transparent',
+                            color: 'var(--text-primary)'
+                          }}
+                          onMouseDown={() => {
+                            setClientId(c.id);
+                            setClientSearchText(c.name);
+                            setShowClientDropdown(false);
+                          }}
+                          className="dropdown-item"
+                        >
+                          {c.name} {c.phone ? `(${c.phone})` : ''}
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="form-group">
               <label className="form-label">الفرع</label>
@@ -313,19 +396,70 @@ function SparePartsInvoice() {
             <tbody>
               {items.map((item, index) => (
                 <tr key={index}>
-                  <td>
-                    <select
-                      className="form-select"
-                      value={item.spare_part_id}
-                      onChange={(e) => updateItem(index, 'spare_part_id', e.target.value)}
-                    >
-                      <option value="">اختر القطعة</option>
-                      {spareParts.map(part => (
-                        <option key={part.id} value={part.id}>
-                          {part.name} ({part.part_number || '—'}) — متوفر: {part.quantity}
-                        </option>
-                      ))}
-                    </select>
+                  <td style={{ position: 'relative' }}>
+                    <div className="searchable-select-container">
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="ابحث باسم القطعة أو رقمها..."
+                        value={getPartSearchText(index, item.spare_part_id)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setPartSearchTexts(prev => ({ ...prev, [index]: val }));
+                          setActiveDropdownRow(index);
+                        }}
+                        onFocus={() => setActiveDropdownRow(index)}
+                        onBlur={() => {
+                          setTimeout(() => setActiveDropdownRow(null), 250);
+                        }}
+                      />
+                      {activeDropdownRow === index && (
+                        <div className="searchable-dropdown-list" style={{
+                          position: 'absolute',
+                          top: '100%',
+                          right: 0,
+                          left: 0,
+                          zIndex: 1000,
+                          maxHeight: '200px',
+                          overflowY: 'auto',
+                          background: 'var(--bg-secondary)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '6px',
+                          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)',
+                          marginTop: '4px'
+                        }}>
+                          {(() => {
+                            const searchText = partSearchTexts[index] || '';
+                            const filteredParts = spareParts.filter(part => 
+                              (part.name || '').toLowerCase().includes(searchText.toLowerCase()) ||
+                              (part.part_number || '').toLowerCase().includes(searchText.toLowerCase())
+                            );
+                            if (filteredParts.length === 0) {
+                              return <div style={{ padding: '8px 12px', color: 'var(--text-muted)' }}>لا توجد نتائج</div>;
+                            }
+                            return filteredParts.map(part => (
+                              <div
+                                key={part.id}
+                                style={{
+                                  padding: '8px 12px',
+                                  cursor: 'pointer',
+                                  borderBottom: '1px solid var(--border)',
+                                  background: item.spare_part_id === part.id ? 'var(--bg-hover)' : 'transparent',
+                                  color: 'var(--text-primary)'
+                                }}
+                                onMouseDown={() => {
+                                  updateItem(index, 'spare_part_id', part.id);
+                                  setActiveDropdownRow(null);
+                                }}
+                                className="dropdown-item"
+                              >
+                                {part.name} ({part.part_number || '—'}) — متوفر: {part.quantity}
+                              </div>
+                            ));
+                          })()}
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td>
                     <input
