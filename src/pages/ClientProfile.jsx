@@ -107,6 +107,7 @@ function ClientProfile() {
     setPrintActive(true);
     setTimeout(() => {
       window.print();
+      setPrintActive(false);
     }, 300);
   }
 

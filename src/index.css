@@ -1851,17 +1851,15 @@ a:hover {
   
   .print-only-container {
     display: block !important;
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 210mm;
-    max-width: 100%;
-    min-height: 297mm;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: auto !important;
     direction: rtl;
     font-family: 'Cairo', sans-serif;
     background: white !important;
     color: black !important;
-    padding: 12mm;
+    padding: 0 !important;
     box-sizing: border-box;
   }
   
@@ -2002,11 +2000,11 @@ a:hover {
   }
 
   .invoice-sheet {
-    width: 210mm !important;
+    width: 100% !important;
     max-width: 100% !important;
-    min-height: 297mm;
-    margin: 0 auto !important;
-    padding: 12mm !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
     background: white !important;
     box-shadow: none !important;
     border: 0 !important;

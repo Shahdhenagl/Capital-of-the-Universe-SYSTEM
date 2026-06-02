@@ -294,6 +294,7 @@ function QuotationDetails() {
     setPrintItem(quotation);
     setTimeout(() => {
       window.print();
+      setPrintItem(null);
     }, 100);
   }
 

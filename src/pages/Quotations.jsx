@@ -146,6 +146,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
     setPrintItem(quotation);
     setTimeout(() => {
       window.print();
+      setPrintItem(null);
     }, 300);
   }
 
