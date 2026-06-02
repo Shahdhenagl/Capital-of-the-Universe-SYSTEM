@@ -83,12 +83,16 @@ export async function notifyAllAdmins(title, message, type = 'info', link = null
 }
 
 export function formatCurrency(amount) {
-  if (amount == null) return '٠ ر.س';
-  return new Intl.NumberFormat('ar-SA', {
-    style: 'currency',
-    currency: 'SAR',
-    minimumFractionDigits: 2
-  }).format(amount);
+  if (amount == null || isNaN(Number(amount))) return '٠٫٠٠ ر.س';
+  try {
+    return new Intl.NumberFormat('ar-SA', {
+      style: 'currency',
+      currency: 'SAR',
+      minimumFractionDigits: 2
+    }).format(Number(amount));
+  } catch {
+    return Number(amount).toFixed(2) + ' ر.س';
+  }
 }
 
 export function formatDate(date) {

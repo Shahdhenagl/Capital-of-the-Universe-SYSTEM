@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, formatCurrency, formatDateShort, CITIES, PAYMENT_METHODS, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Package, Plus, FileText, Search, Edit, Trash2, AlertTriangle, X, Eye, Download, Printer, Users, BarChart3, TrendingUp, TrendingDown } from 'lucide-react';
+import { Package, Plus, FileText, Search, Edit, Trash2, AlertTriangle, X, Eye, Download, Printer, Users, BarChart3, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 
 function SpareParts({ cityFilter = 'all' }) {
   const { profile } = useAuth();
