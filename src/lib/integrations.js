@@ -232,3 +232,56 @@ export async function checkWeeklyCollections(userId, userName, userBranch) {
     console.error('Error checking weekly collections:', err);
   }
 }
+
+export async function checkLowStockParts(userId, userName, userBranch) {
+  try {
+    const { data: parts, error } = await supabase
+      .from('spare_parts')
+      .select('*');
+
+    if (error) throw error;
+    if (!parts || parts.length === 0) return;
+
+    const lowStockParts = parts.filter(part => part.quantity <= (part.min_quantity || 0));
+    if (lowStockParts.length === 0) return;
+
+    for (const part of lowStockParts) {
+      const notifTitle = `تنبيه مخزون منخفض: ${part.name}`;
+      const notifMsg = `المنتج "${part.name}" ${part.part_number ? `(${part.part_number})` : ''} شارف على النفاد! الكمية المتوفرة حالياً: ${part.quantity} حبة فقط (الحد الأدنى للمخزون: ${part.min_quantity || 0})`;
+
+      // Check if a notification with this title was already sent to this user
+      const { data: existing } = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('title', notifTitle)
+        .limit(1);
+
+      if (!existing || existing.length === 0) {
+        // Insert system notification
+        await supabase.from('notifications').insert({
+          user_id: userId,
+          title: notifTitle,
+          message: notifMsg,
+          type: 'warning',
+          link: '/spare-parts'
+        });
+
+        // Send Telegram Alert
+        await notifyIntegrations({
+          title: `⚠️ تنبيه مخزون منخفض: ${part.name}`,
+          message: notifMsg,
+          actor: userName,
+          branch: CITIES[part.branch] || part.branch,
+          lines: [
+            `الكمية المتوفرة: ${part.quantity} حبة`,
+            `حد الطلب الأدنى: ${part.min_quantity || 0} حبة`
+          ],
+          link: '/spare-parts'
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Error checking low stock parts:', err);
+  }
+}

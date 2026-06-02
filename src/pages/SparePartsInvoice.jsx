@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase, formatCurrency, CITIES, PAYMENT_METHODS, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { FileText, Plus, Trash2, Save, ArrowRight, Package, DollarSign } from 'lucide-react';
-import { notifyIntegrations } from '../lib/integrations';
+import { notifyIntegrations, checkLowStockParts } from '../lib/integrations';
 
 function SparePartsInvoice() {
   const { profile } = useAuth();
@@ -248,6 +248,13 @@ function SparePartsInvoice() {
         ],
         link: invoiceLink
       });
+
+      // Check for low stock immediately after a sale
+      try {
+        await checkLowStockParts(profile?.id, profile?.full_name, branch);
+      } catch (err) {
+        console.error('Error running low stock check after save:', err);
+      }
 
       alert(`تم إنشاء الفاتورة رقم ${invoiceNumber} بنجاح`);
       navigate(invoiceLink);
