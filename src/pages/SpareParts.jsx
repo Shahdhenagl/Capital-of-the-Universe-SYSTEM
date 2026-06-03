@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, formatCurrency, formatDateShort, CITIES, PAYMENT_METHODS, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import PrintHeader from '../components/PrintHeader';
+import PrintFooter from '../components/PrintFooter';
 import { Package, Plus, FileText, Search, Edit, Trash2, AlertTriangle, X, Eye, Download, Printer, Users, BarChart3, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 import { checkLowStockParts } from '../lib/integrations';
 
@@ -1481,16 +1483,11 @@ function SpareParts({ cityFilter = 'all' }) {
       {/* Reports Printing container */}
       {printReportActive && (
         <div className="print-only-container">
-          <div className="print-header">
-            <div className="print-logo-section">
-              <span style={{ fontSize: '2rem' }}>🏗️</span>
-              <div>
-                <h1>شركة عاصمة الكون للمصاعد</h1>
-                <span style={{ fontSize: '0.85rem', color: '#555' }}>
-                  {printReportType === 'sales' ? 'تقرير مبيعات قطع الغيار والمخزن' : printReportType === 'purchases' ? 'تقرير مشتريات وتوريد قطع الغيار' : 'كشف جرد مستودع قطع الغيار'}
-                </span>
-              </div>
-            </div>
+          <PrintHeader />
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <span style={{ fontSize: '1rem', color: '#555' }}>
+              {printReportType === 'sales' ? 'تقرير مبيعات قطع الغيار والمخزن' : printReportType === 'purchases' ? 'تقرير مشتريات وتوريد قطع الغيار' : 'كشف جرد مستودع قطع الغيار'}
+            </span>
           </div>
 
           <div className="print-title">
@@ -1609,7 +1606,7 @@ function SpareParts({ cityFilter = 'all' }) {
             </>
           )}
 
-          <div className="print-footer" style={{ marginTop: '80px' }}>
+          <div className="print-footer" style={{ marginTop: '40px' }}>
             <div className="print-signature">
               <span>أمين المستودع والمخازن</span>
               <strong>التوقيع: ..........................</strong>
@@ -1619,6 +1616,8 @@ function SpareParts({ cityFilter = 'all' }) {
               <strong>التوقيع والختم الرسمي</strong>
             </div>
           </div>
+
+          <PrintFooter />
         </div>
       )}
     </div>

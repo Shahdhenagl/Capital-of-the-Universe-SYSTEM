@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, ROLES, CITIES, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useAutocomplete } from '../contexts/AutocompleteContext';
 import { Shield, Plus, Search, Edit, X, UserCheck } from 'lucide-react';
 
 const PERMISSION_GROUPS = [
@@ -65,6 +66,7 @@ const ROLE_PERMISSION_PRESETS = {
 
 function UsersPage() {
   const { profile, createUser, isAdmin } = useAuth();
+  const { memory, saveMemory } = useAutocomplete();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -150,11 +152,14 @@ function UsersPage() {
     setShowModal(true);
   }
 
-  function applyRolePreset(role) {
+  function applyRolePreset(inputRole) {
+    const matchingKey = Object.entries(ROLES).find(([k, v]) => v === inputRole)?.[0];
+    const role = matchingKey || inputRole;
+    
     setFormData(prev => ({
       ...prev,
       role,
-      permissions: ROLE_PERMISSION_PRESETS[role] || ROLE_PERMISSION_PRESETS.viewer
+      permissions: ROLE_PERMISSION_PRESETS[role] || prev.permissions || ROLE_PERMISSION_PRESETS.viewer
     }));
   }
 
@@ -215,6 +220,10 @@ function UsersPage() {
         }
 
         await logActivity(profile?.id, profile?.full_name, 'إضافة', 'المستخدمين', null, `تم إضافة مستخدم جديد: ${formData.full_name} (${ROLES[formData.role]})`, formData.branch);
+      }
+
+      if (formData.role && !ROLES[formData.role]) {
+        saveMemory([{ category: 'user_role', value: formData.role }]);
       }
 
       setShowModal(false);
@@ -385,16 +394,22 @@ function UsersPage() {
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">الدور *</label>
-                    <select
-                      className="form-select"
-                      value={formData.role}
+                    <input
+                      list="role-options"
+                      className="form-input"
+                      value={ROLES[formData.role] || formData.role}
                       onChange={(e) => applyRolePreset(e.target.value)}
+                      placeholder="اختر دوراً أو اكتب دوراً جديداً..."
                       required
-                    >
+                    />
+                    <datalist id="role-options">
                       {Object.entries(ROLES).map(([key, val]) => (
-                        <option key={key} value={key}>{val}</option>
+                        <option key={key} value={val} />
                       ))}
-                    </select>
+                      {(memory?.user_role || []).map((roleVal, i) => (
+                        <option key={`custom-${i}`} value={roleVal} />
+                      ))}
+                    </datalist>
                   </div>
                   <div className="form-group">
                     <label className="form-label">الفرع *</label>

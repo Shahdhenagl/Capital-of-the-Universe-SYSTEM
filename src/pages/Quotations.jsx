@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { FileText, Plus, Search, Send, Check, X, Eye, Filter, MessageCircle, Printer } from 'lucide-react';
 import { useAutocomplete } from '../contexts/AutocompleteContext';
 import SmartInput from '../components/SmartInput';
+import PrintHeader from '../components/PrintHeader';
+import PrintFooter from '../components/PrintFooter';
 
 const QUOTATION_DETAIL_SECTIONS = [
   {
@@ -1024,18 +1026,11 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
       {/* Print PDF Vector Document Section for Quotations */}
       {printItem && (
         <div className="print-only-container">
-          <div className="print-header">
-            <div className="print-logo-section">
-              <img src="/logo-transparent.png" alt="عاصمة الكون" />
-              <div>
-                <h1>شركة عاصمة الكون للمصاعد</h1>
-                <span style={{ fontSize: '0.85rem', color: '#555' }}>عروض الأسعار والمقايسات الرسمية</span>
-              </div>
-            </div>
-            <div style={{ textAlign: 'left', direction: 'ltr' }}>
-              <p>رقم العرض: <strong>{printItem.quotation_number || printItem.id?.slice(0, 8)}</strong></p>
-              <p>تاريخ العرض: {formatDate(printItem.created_at)}</p>
-            </div>
+          <PrintHeader />
+
+          <div style={{ textAlign: 'left', direction: 'ltr', marginBottom: '20px' }}>
+            <p>رقم العرض: <strong>{printItem.quotation_number || printItem.id?.slice(0, 8)}</strong></p>
+            <p>تاريخ العرض: {formatDate(printItem.created_at)}</p>
           </div>
 
           <div className="print-title">عرض سعر رسمي لتوريد وتركيب وصيانة المصاعد</div>
@@ -1119,7 +1114,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
             </div>
           )}
 
-          <div className="print-footer" style={{ marginTop: '80px' }}>
+          <div className="print-footer" style={{ marginTop: '40px' }}>
             <div className="print-signature">
               <span>المدير الفني للمصاعد</span>
               <strong>الاعتماد والختم الرسمي</strong>
@@ -1129,6 +1124,8 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
               <strong>التوقيع والختم</strong>
             </div>
           </div>
+
+          <PrintFooter />
         </div>
       )}
     </div>

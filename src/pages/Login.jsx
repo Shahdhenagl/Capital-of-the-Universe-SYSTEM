@@ -39,7 +39,7 @@ function Login() {
       if (err.message === 'Invalid login credentials') {
         setError('بيانات الدخول غير صحيحة. يرجى التحقق من البريد الإلكتروني وكلمة المرور.');
       } else if (err.message === 'Email not confirmed') {
-        setError('لم يتم تأكيد البريد الإلكتروني بعد.');
+        setError('لم يتم تأكيد البريد الإلكتروني. يرجى من مدير النظام إيقاف (Email Confirmations) من إعدادات Authentication في Supabase.');
       } else {
         setError('حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.');
       }

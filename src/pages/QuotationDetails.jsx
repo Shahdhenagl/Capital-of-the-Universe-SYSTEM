@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, formatCurrency, formatDate, QUOTATION_STATUS, CITIES, PAYMENT_FREQUENCIES, PAYMENT_METHODS, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { FileText, MessageCircle, Check, X, ArrowRight, Calendar, DollarSign, Download, User, Printer } from 'lucide-react';
+import PrintHeader from '../components/PrintHeader';
+import PrintFooter from '../components/PrintFooter';
 
 const QUOTATION_DETAIL_SECTIONS = [
   { key: 'project', title: 'بيانات المشروع', fields: [['project_name', 'اسم المشروع'], ['project_location', 'موقع المشروع'], ['quotation_date', 'تاريخ العرض'], ['validity_period', 'مدة صلاحية العرض']] },
@@ -804,18 +806,11 @@ function QuotationDetails() {
       {/* Print PDF Vector Document Section for Quotations */}
       {printItem && (
         <div className="print-only-container">
-          <div className="print-header">
-            <div className="print-logo-section">
-              <span style={{ fontSize: '2rem' }}>🏗️</span>
-              <div>
-                <h1>شركة عاصمة الكون للمصاعد</h1>
-                <span style={{ fontSize: '0.85rem', color: '#555' }}>عروض الأسعار والمقايسات الرسمية</span>
-              </div>
-            </div>
-            <div style={{ textAlign: 'left', direction: 'ltr' }}>
-              <p>رقم العرض: <strong>{printItem.quotation_number || printItem.id?.slice(0, 8)}</strong></p>
-              <p>تاريخ العرض: {formatDate(printItem.created_at)}</p>
-            </div>
+          <PrintHeader />
+
+          <div style={{ textAlign: 'left', direction: 'ltr', marginBottom: '20px' }}>
+            <p>رقم العرض: <strong>{printItem.quotation_number || printItem.id?.slice(0, 8)}</strong></p>
+            <p>تاريخ العرض: {formatDate(printItem.created_at)}</p>
           </div>
 
           <div className="print-title">عرض سعر رسمي لتوريد وتركيب وصيانة المصاعد</div>
@@ -899,7 +894,7 @@ function QuotationDetails() {
             </div>
           )}
 
-          <div className="print-footer" style={{ marginTop: '80px' }}>
+          <div className="print-footer" style={{ marginTop: '40px' }}>
             <div className="print-signature">
               <span>المدير الفني للمصاعد</span>
               <strong>الاعتماد والختم الرسمي</strong>
@@ -909,6 +904,8 @@ function QuotationDetails() {
               <strong>التوقيع والختم</strong>
             </div>
           </div>
+
+          <PrintFooter />
         </div>
       )}
     </div>

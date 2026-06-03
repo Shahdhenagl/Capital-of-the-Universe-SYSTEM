@@ -1831,7 +1831,8 @@ a:hover {
 
 /* ===== Vector Print PDF Styles ===== */
 @media screen {
-  .print-only-container {
+  .print-only-container,
+  .print-only-element {
     display: none !important;
   }
 }
@@ -1874,42 +1875,133 @@ a:hover {
     box-shadow: none !important;
   }
 
-  .print-header {
+  .print-only-element {
+    display: block !important;
+  }
+
+  .company-print-header {
+    margin-bottom: 24px;
+    font-family: 'Cairo', sans-serif;
+  }
+
+  .header-top-row {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    border-bottom: 3px solid #0f766e;
-    padding-bottom: 12px;
-    margin-bottom: 18px;
+    background: #4ea5c4;
+    height: 70px;
   }
 
-  .print-logo-section {
+  .header-tax-info {
+    color: white;
+    font-weight: bold;
+    font-size: 1.1rem;
     display: flex;
     align-items: center;
-    gap: 15px;
+    justify-content: flex-end;
+    padding-left: 20px;
+    width: 55%;
   }
 
-  .print-logo-section img {
-    width: 70px;
-    height: 70px;
-    object-fit: contain;
+  .header-logo-box {
+    background: white;
+    border-radius: 40px 0 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 15px;
+    width: 45%;
+    margin: 4px 0 4px 4px;
   }
 
-  .print-logo-section h1 {
-    font-size: 1.8rem;
-    font-weight: 800;
-    margin: 0;
-    color: #0f172a;
+  .logo-text-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #333;
+    font-weight: bold;
+    margin-left: auto;
+    margin-right: 10px;
   }
 
-  .print-title {
-    font-size: 1.55rem;
-    font-weight: 800;
+  .text-line-1, .text-line-3 {
+    font-size: 0.6rem;
+    color: #4ea5c4;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1;
+  }
+
+  .line-deco {
+    width: 15px;
+    height: 2px;
+    background: #586861;
+  }
+
+  .text-line-2 {
+    font-size: 1.4rem;
+    color: #222;
+    line-height: 1.2;
+  }
+
+  .header-bottom-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 4px;
+  }
+
+  .header-services {
+    background: #586861;
+    color: white;
+    padding: 6px 30px;
+    border-radius: 0 40px 40px 0;
+    font-weight: bold;
+    font-size: 1rem;
+    min-width: 30%;
     text-align: center;
-    margin-bottom: 18px;
-    color: #0f766e;
-    border-bottom: 1px dashed #ccc;
-    padding-bottom: 10px;
+  }
+
+  .company-print-footer {
+    margin-top: 40px;
+    page-break-inside: avoid;
+    font-family: 'Cairo', sans-serif;
+  }
+
+  .footer-banks {
+    display: flex;
+    justify-content: space-around;
+    background: #586861;
+    color: white;
+    padding: 8px 10px;
+    margin-bottom: 5px;
+  }
+
+  .bank-item {
+    text-align: center;
+  }
+
+  .bank-name {
+    font-size: 0.75rem;
+    margin-bottom: 2px;
+  }
+
+  .bank-acc {
+    font-size: 0.85rem;
+    font-family: monospace;
+    letter-spacing: 0.5px;
+  }
+
+  .footer-contacts {
+    background: #4ea5c4;
+    color: white;
+    padding: 10px;
+    text-align: center;
+    font-size: 0.85rem;
+    line-height: 1.6;
+  }
+
+  .contact-line {
+    margin-bottom: 2px;
   }
 
   .print-meta-grid {
@@ -1993,18 +2085,6 @@ a:hover {
     width: 100%;
   }
 
-  .print-only-container::after,
-  .invoice-sheet::after {
-    content: "بيانات التواصل: مكة المكرمة 0544113161 / 0544600116 - جدة 0544113161 / 0504413330 - sales@capital-of-universe.com - capitalofuniverse-ksa.com";
-    display: block;
-    margin-top: 18px;
-    padding-top: 10px;
-    border-top: 2px solid #0f766e;
-    color: #0f172a;
-    font-size: 0.78rem;
-    line-height: 1.7;
-    text-align: center;
-  }
 
   .invoice-sheet {
     width: 100% !important;

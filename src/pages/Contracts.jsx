@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { useAutocomplete } from '../contexts/AutocompleteContext';
 import SmartInput from '../components/SmartInput';
+import PrintHeader from '../components/PrintHeader';
+import PrintFooter from '../components/PrintFooter';
 
 const CONTRACT_TYPES = {
   supply_installation: 'توريد وتركيب مصاعد',
@@ -1351,18 +1353,11 @@ function Contracts({ cityFilter = 'all' }) {
         const details = printContractItem.meta?.details || {};
         return (
           <div className="print-only-container">
-            <div className="print-header">
-              <div className="print-logo-section">
-                <span style={{ fontSize: '2rem' }}>🏗️</span>
-                <div>
-                  <h1>شركة عاصمة الكون للمصاعد</h1>
-                  <span style={{ fontSize: '0.85rem', color: '#555' }}>العقود والاتفاقيات الرسمية المبرمة</span>
-                </div>
-              </div>
-              <div style={{ textAlign: 'left', direction: 'ltr' }}>
-                <p>رقم العقد: <strong>{printContractItem.contract_number}</strong></p>
-                <p>تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</p>
-              </div>
+            <PrintHeader />
+
+            <div style={{ textAlign: 'left', direction: 'ltr', marginBottom: '20px' }}>
+              <p>رقم العقد: <strong>{printContractItem.contract_number}</strong></p>
+              <p>تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</p>
             </div>
 
             <div className="print-title">عقد {CONTRACT_TYPES[printContractItem.contract_type]} رسمي ومبرم</div>
@@ -1460,7 +1455,7 @@ function Contracts({ cityFilter = 'all' }) {
               </div>
             )}
 
-            <div className="print-footer" style={{ marginTop: '100px' }}>
+            <div className="print-footer" style={{ marginTop: '40px' }}>
               <div className="print-signature">
                 <span>الطرف الأول (الشركة)</span>
                 <strong>التوقيع والختم الرسمي</strong>
@@ -1470,6 +1465,8 @@ function Contracts({ cityFilter = 'all' }) {
                 <strong>موافقة وتوقيع الطرف الثاني</strong>
               </div>
             </div>
+
+            <PrintFooter />
           </div>
         );
       })()}

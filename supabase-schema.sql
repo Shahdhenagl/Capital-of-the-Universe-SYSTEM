@@ -79,7 +79,7 @@ CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name TEXT NOT NULL,
   email TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'viewer' CHECK (role IN ('admin', 'accountant', 'viewer')),
+  role TEXT NOT NULL DEFAULT 'viewer',
   branch TEXT NOT NULL DEFAULT 'all' CHECK (branch IN ('mecca', 'jeddah', 'all')),
   permissions JSONB DEFAULT '{}'::jsonb,
   phone TEXT,

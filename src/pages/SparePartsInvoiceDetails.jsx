@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowRight, Printer, FileText } from 'lucide-react';
 import { supabase, CITIES, PAYMENT_METHODS, formatCurrency, formatDate } from '../lib/supabase';
+import PrintHeader from '../components/PrintHeader';
+import PrintFooter from '../components/PrintFooter';
 
 export default function SparePartsInvoiceDetails() {
   const { id } = useParams();
@@ -177,18 +179,11 @@ export default function SparePartsInvoiceDetails() {
 
       {/* Print PDF Vector Document Section (for clients, strictly hides cost and profit) */}
       <div className="print-only-container">
-        <div className="print-header">
-          <div className="print-logo-section">
-            <span style={{ fontSize: '2rem' }}>🏗️</span>
-            <div>
-              <h1 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>شركة عاصمة الكون للمصاعد</h1>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>فاتورة بيع قطع غيار ومستلزمات</span>
-            </div>
-          </div>
-          <div style={{ textAlign: 'left', direction: 'ltr' }}>
-            <p style={{ margin: '0 0 5px 0' }}>رقم الفاتورة: <strong>{invoice.invoice_number}</strong></p>
-            <p style={{ margin: 0 }}>التاريخ: {formatDate(invoice.created_at)}</p>
-          </div>
+        <PrintHeader />
+        
+        <div style={{ textAlign: 'left', direction: 'ltr', marginBottom: '20px' }}>
+          <p style={{ margin: '0 0 5px 0' }}>رقم الفاتورة: <strong>{invoice.invoice_number}</strong></p>
+          <p style={{ margin: 0 }}>التاريخ: {formatDate(invoice.created_at)}</p>
         </div>
 
         <div className="print-title" style={{ fontSize: '1.4rem', fontWeight: 800, textAlign: 'center', margin: '20px 0', color: '#0f766e', borderBottom: '1px dashed #ccc', paddingBottom: '10px' }}>
@@ -258,16 +253,18 @@ export default function SparePartsInvoiceDetails() {
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '60px', padding: '0 20px' }}>
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ margin: '0 0 45px 0', color: '#475569', fontSize: '0.9rem' }}>توقيع الطرف الثاني (العميل)</p>
-            <div style={{ borderBottom: '1.5px solid #94a3b8', width: '160px', margin: '0 auto' }}></div>
+        <div className="print-footer" style={{ marginTop: '40px' }}>
+          <div className="print-signature">
+            <span>توقيع الطرف الثاني (العميل)</span>
+            <strong>..........................</strong>
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ margin: '0 0 45px 0', color: '#475569', fontSize: '0.9rem' }}>الختم والاعتماد (عاصمة الكون)</p>
-            <div style={{ borderBottom: '1.5px solid #94a3b8', width: '160px', margin: '0 auto' }}></div>
+          <div className="print-signature">
+            <span>الختم والاعتماد (عاصمة الكون)</span>
+            <strong>التوقيع والختم الرسمي</strong>
           </div>
         </div>
+
+        <PrintFooter />
       </div>
     </div>
   );

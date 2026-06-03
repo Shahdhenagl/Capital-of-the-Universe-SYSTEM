@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { notifyIntegrations, openGoogleMaps, openWhatsApp } from '../lib/integrations';
 import { useAutocomplete } from '../contexts/AutocompleteContext';
 import SmartInput from '../components/SmartInput';
+import PrintHeader from '../components/PrintHeader';
+import PrintFooter from '../components/PrintFooter';
 
 const QUOTATION_DETAIL_SECTIONS = [
   {
@@ -2036,21 +2038,14 @@ function ClientProfile() {
       {/* Print PDF Vector Document Section for Client Statement */}
       {printActive && (
         <div className="print-only-container">
-          <div className="print-header">
-            <div className="print-logo-section">
-              <img src="/logo-transparent.png" alt="عاصمة الكون" />
-              <div>
-                <h1>شركة عاصمة الكون للمصاعد</h1>
-                <span style={{ fontSize: '0.85rem', color: '#555' }}>كشوف الحسابات والمديونيات التفصيلية</span>
-              </div>
-            </div>
-            <div style={{ textAlign: 'left', direction: 'ltr' }}>
-              <p>العميل: <strong>{client.name}</strong></p>
-              <p>تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
-            </div>
-          </div>
+          <PrintHeader />
 
           <div className="print-title">كشف حساب مالي رسمي وتفصيلي للعميل</div>
+          
+          <div style={{ textAlign: 'left', direction: 'ltr', marginBottom: '20px' }}>
+            <p>العميل: <strong>{client.name}</strong></p>
+            <p>تاريخ الاستخراج: {new Date().toLocaleDateString('ar-SA')}</p>
+          </div>
 
           <div className="print-meta-grid">
             <div className="print-meta-item">
@@ -2117,7 +2112,7 @@ function ClientProfile() {
             <strong style={{ fontSize: '1.4rem', color: '#ef4444' }}>{formatCurrency(totalDue)}</strong>
           </div>
 
-          <div className="print-footer" style={{ marginTop: '120px', clear: 'both' }}>
+          <div className="print-footer" style={{ marginTop: '40px', clear: 'both' }}>
             <div className="print-signature">
               <span>المدير المالي والمحاسب</span>
               <strong>الاعتماد والختم الرسمي</strong>
@@ -2127,6 +2122,8 @@ function ClientProfile() {
               <strong>موافقة الطرف الثاني</strong>
             </div>
           </div>
+
+          <PrintFooter />
         </div>
       )}
     </div>

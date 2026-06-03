@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Check, FileText, Globe, Mail, MapPin, MessageSquare, Phone, Printer, X } from 'lucide-react';
 import { CITIES, formatCurrency, formatDate } from '../lib/supabase';
+import PrintHeader from '../components/PrintHeader';
+import PrintFooter from '../components/PrintFooter';
 
 const DETAIL_SECTIONS = [
   { key: 'project', title: 'بيانات المشروع', fields: [['project_name', 'اسم المشروع'], ['project_location', 'موقع المشروع'], ['quotation_date', 'تاريخ العرض'], ['validity_period', 'مدة صلاحية العرض']] },
@@ -169,9 +171,11 @@ export default function PublicQuotation() {
   return (
     <div dir="rtl" style={publicStyles.page}>
       <div style={publicStyles.shell}>
+        <PrintHeader />
+        
         <div style={publicStyles.hero}>
           <div style={publicStyles.heroTop}>
-            <div style={publicStyles.brand}>
+            <div className="invoice-no-print" style={publicStyles.brand}>
               <img src="/logo-transparent.png" alt="عاصمة الكون" style={publicStyles.logo} />
               <div>
                 <p style={publicStyles.eyebrow}>شركة عاصمة الكون للمصاعد</p>
@@ -377,6 +381,8 @@ export default function PublicQuotation() {
             </form>
           )}
         </div>
+        
+        <PrintFooter />
       </div>
     </div>
   );
