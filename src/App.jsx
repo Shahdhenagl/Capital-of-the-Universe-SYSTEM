@@ -30,6 +30,7 @@ import Integrations from './pages/Integrations';
 import Services from './pages/Services';
 import PublicQuotation from './pages/PublicQuotation';
 import MaintenanceVisits from './pages/MaintenanceVisits';
+import InstallationPhases from './pages/InstallationPhases';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -71,6 +72,7 @@ function AppRoutes() {
               <Route path="/employees/:id" element={<ProtectedRoute permission="employees.view"><EmployeeProfile /></ProtectedRoute>} />
               <Route path="/services" element={<ProtectedRoute permission="services.view"><Services /></ProtectedRoute>} />
               <Route path="/maintenance" element={<ProtectedRoute permission="maintenance.view"><MaintenanceVisits cityFilter={cityFilter} /></ProtectedRoute>} />
+              <Route path="/installations" element={<ProtectedRoute permission="maintenance.view"><InstallationPhases /></ProtectedRoute>} />
               <Route path="/users" element={
                 <ProtectedRoute adminOnly>
                   <Users />

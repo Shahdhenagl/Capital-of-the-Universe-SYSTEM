@@ -23,6 +23,7 @@ import SmartInput from '../components/SmartInput';
 import PrintHeader from '../components/PrintHeader';
 import PrintFooter from '../components/PrintFooter';
 import ContractPrintTemplate from '../components/ContractPrintTemplate';
+import InstallPrintTemplate from '../components/InstallPrintTemplate';
 
 const CONTRACT_TYPES = {
   supply_installation: 'توريد وتركيب مصاعد',
@@ -72,10 +73,10 @@ const EMPTY_FORM = {
 const INSTALL_SECTIONS = [
   {
     key: 'contract',
-    title: 'بيانات العقد',
+    title: 'بيانات العقد الأساسية',
     fields: [
       ['project_name', 'اسم المشروع'],
-      ['project_location', 'موقع المشروع'],
+      ['project_location', 'موقع المشروع (المدينة والحي)'],
       ['contract_date', 'تاريخ العقد', 'date'],
       ['elevator_brand', 'ماركة المصعد']
     ]
@@ -85,55 +86,62 @@ const INSTALL_SECTIONS = [
     title: 'بيانات العميل',
     fields: [
       ['customer_name', 'اسم العميل / المؤسسة'],
-      ['identity_number', 'رقم الهوية أو السجل التجاري'],
-      ['tax_number', 'الرقم الضريبي'],
+      ['identity_number', 'رقم الهوية / السجل التجاري'],
       ['address', 'العنوان'],
-      ['mobile', 'رقم الجوال'],
-      ['email', 'البريد الإلكتروني', 'email'],
-      ['representative_name', 'اسم الممثل وصفته']
+      ['mobile', 'رقم الجوال']
     ]
   },
   {
     key: 'elevator',
-    title: 'بيانات المصعد',
+    title: 'المواصفات الفنية الرئيسية',
     fields: [
-      ['elevator_count', 'عدد المصاعد', 'number'],
       ['elevator_type', 'نوع المصعد'],
-      ['capacity', 'الحمولة'],
-      ['speed', 'السرعة'],
-      ['stops', 'عدد الوقفات', 'number'],
       ['entrances', 'عدد المداخل', 'number'],
-      ['operation_type', 'نوع التشغيل'],
+      ['speed', 'سرعة المصعد'],
+      ['stops', 'عدد الوقفات', 'number'],
+      ['travel_distance', 'مشوار الصاعدة'],
+      ['machine_type', 'الماكينة'],
+      ['shaft_type', 'نوع البئر'],
+      ['machine_position', 'موضع الماكينة'],
       ['shaft_dimensions', 'أبعاد البئر'],
-      ['cabin_dimensions', 'أبعاد الكابينة'],
-      ['door_dimensions', 'أبعاد الأبواب'],
-      ['travel_distance', 'مسافة الرحلة']
+      ['capacity_persons', 'عدد الأشخاص / الحمولة'],
+      ['door_dimensions', 'مقاس الباب'],
+      ['outer_door_type', 'نوع الباب الخارجي'],
+      ['inner_door_type', 'الباب الداخلي'],
+      ['cam_type', 'الكامة']
     ]
   },
   {
-    key: 'finishes',
-    title: 'التشطيبات والتصميم الداخلي',
+    key: 'mechanical',
+    title: 'المواصفات الميكانيكية والسكك',
     fields: [
-      ['cabin_design', 'تصميم الكابينة'],
-      ['finish_type', 'نوع التشطيبات'],
-      ['flooring', 'الأرضيات'],
-      ['ceiling', 'السقف'],
-      ['mirrors', 'المرايا'],
-      ['handrail', 'الدرابزين'],
-      ['operation_panels', 'لوحات التشغيل']
+      ['cabin_rails', 'سكك الكابينة'],
+      ['counterweight_rails', 'سكك الثقل'],
+      ['counterweight', 'ثقل الموازنة'],
+      ['traction_ropes', 'حبال الجر'],
+      ['electrical_wiring', 'التمديدات الكهربائية']
+    ]
+  },
+  {
+    key: 'cabin_control',
+    title: 'الصاعدة ولوحة التحكم',
+    fields: [
+      ['floor_indicator', 'مبين الأدوار'],
+      ['cabin_details', 'مواصفات الصاعدة (الكابينة)'],
+      ['control_panel', 'لوحة التحكم (الكنترول)']
     ]
   },
   {
     key: 'safety',
-    title: 'مواصفات السلامة',
+    title: 'مواصفات الأمان',
     fields: [
-      ['ard', 'جهاز الإنقاذ التلقائي'],
-      ['door_sensor', 'حساس الباب'],
-      ['overload_sensor', 'حساس زيادة الوزن'],
-      ['speed_governor', 'حاكم السرعة'],
-      ['intercom', 'الإنتركم'],
-      ['emergency_light', 'إنارة الطوارئ'],
-      ['fire_mode', 'وضع الحريق']
+      ['limit_switch', 'قاطع نهاية المشوار'],
+      ['parachute', 'البراشوت'],
+      ['revision_device', 'جهاز الريفيزيون'],
+      ['oilers', 'المزايت'],
+      ['flexible_cable', 'الكابل المرن'],
+      ['shock_absorbers', 'مخفف الصدمات'],
+      ['fire_brake_device', 'جهاز الفرامل في حالة الحريق']
     ]
   }
 ];
@@ -705,6 +713,48 @@ function Contracts({ cityFilter = 'all' }) {
 
         if (visits.length > 0) {
           await supabase.from('maintenance_visits').insert(visits);
+        }
+      } else if (form.contract_type === 'supply_installation') {
+        if (editingContract) {
+          await supabase.from('installation_phases').delete()
+            .eq('contract_id', editingContract.id)
+            .eq('status', 'pending');
+        }
+
+        const startDate = new Date(form.start_date);
+        
+        // As per standard contract:
+        // Phase 1: Sign contract & Rails/Doors supply (At start)
+        // Phase 2: Rails/Doors installation finish (Requires Phase 1 finish)
+        // Phase 3: Control supply & operation (Requires Phase 2 finish & Phase 2 payment)
+        
+        const phases = [
+          { phase_number: 1, phase_name: 'عند التعاقد لتوريد وتركيب السكة والأبواب' },
+          { phase_number: 2, phase_name: 'بعد الانتهاء من تركيب السكك والابواب' },
+          { phase_number: 3, phase_name: 'توريد وتركيب الكنترول وتشغيل المصعد' }
+        ];
+
+        const dbPhases = phases.map((phase, index) => {
+          // Link to collection_schedule if it exists (e.g. Phase 1 -> Payment 1, Phase 2 -> Payment 2)
+          const matchedCollection = insertedCollections[index] || null;
+          
+          let scheduleDate = new Date(startDate);
+          scheduleDate.setDate(scheduleDate.getDate() + (index * 30)); // Approximate +30 days for each phase
+
+          return {
+            contract_id: contractData.id,
+            client_id: form.client_id,
+            phase_number: phase.phase_number,
+            phase_name: phase.phase_name,
+            scheduled_date: scheduleDate.toISOString().split('T')[0],
+            status: 'pending',
+            collection_id: matchedCollection ? matchedCollection.id : null,
+            branch: form.branch
+          };
+        });
+
+        if (dbPhases.length > 0) {
+          await supabase.from('installation_phases').insert(dbPhases);
         }
       }
 
@@ -1386,8 +1436,16 @@ function Contracts({ cityFilter = 'all' }) {
         </div>
       )}
 
-      {/* Print PDF Vector Document Section for Contracts */}
-      {printContractItem && <ContractPrintTemplate contract={printContractItem} />}
+      {/* Print PDF Vector Document Section */}
+      <div style={{ display: 'none' }}>
+        <div ref={printRef}>
+          {printData && printData.contract_type === 'supply_installation' ? (
+            <InstallPrintTemplate contract={printData} />
+          ) : (
+            printData && <ContractPrintTemplate contract={printData} />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

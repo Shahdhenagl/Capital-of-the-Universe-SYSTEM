@@ -338,3 +338,52 @@ export async function checkUpcomingVisits(userId, userName, userBranch) {
     console.error('Error checking upcoming visits:', err);
   }
 }
+
+export async function checkDelayedInstallations(userId, userName, userBranch) {
+  try {
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const { data: delayedPhases, error } = await supabase
+      .from('installation_phases')
+      .select('*, clients(name, phone), contracts(contract_number)')
+      .eq('status', 'pending')
+      .lt('scheduled_date', todayStr);
+
+    if (error) throw error;
+    if (!delayedPhases || delayedPhases.length === 0) return;
+
+    for (const phase of delayedPhases) {
+      const notifTitle = `مرحلة تركيب متأخرة`;
+      const notifMsg = `العميل ${phase.clients?.name || ''} متأخر في إكمال مرحلة ${phase.phase_name}`;
+
+      const { data: existing } = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('title', notifTitle)
+        .like('message', `%${phase.clients?.name}%`)
+        .limit(1);
+
+      if (!existing || existing.length === 0) {
+        await supabase.from('notifications').insert({
+          user_id: userId,
+          title: notifTitle,
+          message: notifMsg,
+          type: 'danger',
+          link: '/installations'
+        });
+
+        await notifyIntegrations({
+          title: `⚠️ تنبيه تركيب: ${notifTitle}`,
+          message: notifMsg,
+          actor: userName,
+          branch: CITIES[phase.branch] || phase.branch,
+          lines: [`رقم العقد: ${phase.contracts?.contract_number || '-'}`, `المرحلة: ${phase.phase_name}`],
+          link: '/installations'
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Error checking delayed installations:', err);
+  }
+}
