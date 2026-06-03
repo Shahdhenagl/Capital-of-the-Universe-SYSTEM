@@ -138,9 +138,19 @@ export const PAYMENT_FREQUENCIES = {
 };
 
 export const QUOTATION_STATUS = {
-  pending: 'معلق',
-  accepted: 'مقبول',
-  rejected: 'مرفوض'
+  draft: 'مسودة',
+  pending_manager: 'بانتظار الإدارة',
+  manager_approved: 'معتمد للإرسال',
+  manager_rejected: 'مرفوض من الإدارة',
+  sent: 'مرسل للعميل',
+  client_negotiating: 'قيد التفاوض',
+  client_accepted: 'موافقة العميل',
+  client_rejected: 'مرفوض من العميل',
+  final_approved: 'مقبول نهائياً',
+  final_rejected: 'مرفوض نهائياً',
+  pending: 'معلق', // legacy
+  accepted: 'مقبول', // legacy
+  rejected: 'مرفوض' // legacy
 };
 
 export const CONTRACT_STATUS = {
@@ -158,6 +168,8 @@ export const COLLECTION_STATUS = {
 
 export const ROLES = {
   admin: 'مدير النظام',
+  sales_manager: 'مدير المبيعات',
   accountant: 'محاسب',
+  sales_rep: 'مندوب مبيعات',
   viewer: 'مشاهد'
 };

@@ -33,6 +33,7 @@ function Dashboard({ cityFilter }) {
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [upcomingCollections, setUpcomingCollections] = useState([]);
   const [overdueClients, setOverdueClients] = useState([]);
+  const [pendingQuotations, setPendingQuotations] = useState([]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -46,7 +47,8 @@ function Dashboard({ cityFilter }) {
         fetchMonthlyData(),
         fetchRecentTransactions(),
         fetchUpcomingCollections(),
-        fetchOverdueClients()
+        fetchOverdueClients(),
+        (profile?.role === 'sales_manager' || profile?.role === 'admin') ? fetchPendingQuotations() : Promise.resolve()
       ]);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -243,6 +245,20 @@ function Dashboard({ cityFilter }) {
     }
     const { data } = await query;
     setOverdueClients(data || []);
+  }
+
+  async function fetchPendingQuotations() {
+    let query = supabase
+      .from('quotations')
+      .select('id, title, amount, created_at, clients(name)')
+      .eq('status', 'pending_manager')
+      .order('created_at', { ascending: false })
+      .limit(5);
+    if (cityFilter && cityFilter !== 'all') {
+      query = query.eq('branch', cityFilter);
+    }
+    const { data } = await query;
+    setPendingQuotations(data || []);
   }
 
   const statCards = [
@@ -538,6 +554,48 @@ function Dashboard({ cityFilter }) {
           </div>
         </div>
       </div>
+
+      {/* Pending Manager Approvals (Sales Managers & Admins only) */}
+      {(profile?.role === 'sales_manager' || profile?.role === 'admin') && pendingQuotations.length > 0 && (
+        <div className="card mt-24">
+          <div className="card-header">
+            <h3 className="card-title">
+              <FileText size={18} className="text-warning" />
+              عروض أسعار بانتظار الاعتماد
+            </h3>
+            <span className="badge badge-warning">{pendingQuotations.length}</span>
+          </div>
+          <div className="card-body">
+            <div>
+              {pendingQuotations.map((quote) => (
+                <div
+                  key={quote.id}
+                  className="flex-between"
+                  style={{
+                    padding: '12px 16px',
+                    marginBottom: '8px',
+                    background: 'var(--warning-bg)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid rgba(245, 158, 11, 0.2)'
+                  }}
+                >
+                  <div>
+                    <div className="font-semibold" style={{ fontSize: '0.9rem' }}>
+                      {quote.title || 'عرض سعر'} - {quote.clients?.name || 'عميل'}
+                    </div>
+                    <div className="text-warning" style={{ fontSize: '0.75rem' }}>
+                      تم الإنشاء: {formatDate(quote.created_at)}
+                    </div>
+                  </div>
+                  <div className="font-bold text-warning">
+                    {formatCurrency(quote.amount)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

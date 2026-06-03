@@ -61,6 +61,18 @@ const ROLE_PERMISSION_PRESETS = {
     'quotations.view': true,
     'contracts.view': true,
     'collections.view': true
+  },
+  sales_manager: {
+    'dashboard.view': true,
+    'clients.view': true,
+    'quotations.view': true,
+    'contracts.view': true
+  },
+  sales_rep: {
+    'dashboard.view': true,
+    'clients.view': true,
+    'quotations.view': true,
+    'contracts.view': true
   }
 };
 

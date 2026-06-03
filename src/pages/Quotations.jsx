@@ -351,7 +351,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
         description: buildQuotationDescription(),
         amount: parseFloat(form.amount),
         branch: form.branch,
-        status: 'pending',
+        status: 'pending_manager',
         pdf_url: pdfUrl,
         created_by: profile?.id
       };
@@ -385,6 +385,23 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
         profile?.branch
       );
 
+      // Notify Sales Managers
+      const { data: managers } = await supabase
+        .from('profiles')
+        .select('id')
+        .in('role', ['admin', 'sales_manager']);
+      
+      if (managers && managers.length > 0) {
+        const notifInserts = managers.map(m => ({
+          user_id: m.id,
+          title: 'عرض سعر بانتظار الاعتماد',
+          message: `عرض سعر جديد (${form.title}) يحتاج لمراجعتك.`,
+          type: 'warning',
+          link: '/quotations'
+        }));
+        await supabase.from('notifications').insert(notifInserts);
+      }
+
       // Save memory for autocomplete
       const memoryItems = [];
       if (form.title) memoryItems.push({ category: 'quotation_title', value: form.title });
@@ -410,7 +427,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
   }
 
   async function handleStatusChange(quotation, newStatus) {
-    if (newStatus === 'accepted') {
+    if (newStatus === 'final_approved') {
       setSelectedQuotation(quotation);
       setContractForm({
         total_amount: quotation.amount || '',
@@ -440,6 +457,19 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
         `${quotation.title} → ${QUOTATION_STATUS[newStatus]}`,
         profile?.branch
       );
+
+      // Notify the quotation creator if status changed by someone else
+      if (quotation.created_by && quotation.created_by !== profile?.id) {
+        if (newStatus === 'manager_approved' || newStatus === 'manager_rejected' || newStatus === 'final_approved' || newStatus === 'final_rejected') {
+          await supabase.from('notifications').insert({
+            user_id: quotation.created_by,
+            title: `تحديث حالة العرض`,
+            message: `تم تغيير حالة العرض (${quotation.title}) إلى: ${QUOTATION_STATUS[newStatus]}`,
+            type: newStatus.includes('approved') ? 'success' : 'danger',
+            link: '/quotations'
+          });
+        }
+      }
 
       fetchQuotations();
     } catch (err) {
@@ -645,22 +675,28 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
             الكل
           </button>
           <button
-            className={`city-filter-btn ${statusFilter === 'pending' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('pending')}
+            className={`city-filter-btn ${statusFilter === 'pending_manager' ? 'active' : ''}`}
+            onClick={() => setStatusFilter('pending_manager')}
           >
-            معلق
+            بانتظار الإدارة
           </button>
           <button
-            className={`city-filter-btn ${statusFilter === 'accepted' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('accepted')}
+            className={`city-filter-btn ${statusFilter === 'manager_approved' ? 'active' : ''}`}
+            onClick={() => setStatusFilter('manager_approved')}
           >
-            مقبول
+            معتمد
           </button>
           <button
-            className={`city-filter-btn ${statusFilter === 'rejected' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('rejected')}
+            className={`city-filter-btn ${statusFilter === 'sent' ? 'active' : ''}`}
+            onClick={() => setStatusFilter('sent')}
           >
-            مرفوض
+            مرسل للعميل
+          </button>
+          <button
+            className={`city-filter-btn ${statusFilter === 'final_approved' ? 'active' : ''}`}
+            onClick={() => setStatusFilter('final_approved')}
+          >
+            مقبول نهائياً
           </button>
         </div>
         <div className="filter-group">
@@ -744,29 +780,80 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                       >
                         <Printer size={16} className="text-primary" />
                       </button>
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => sendWhatsApp(q)}
-                        title="إرسال عبر واتساب"
-                      >
-                        <MessageCircle size={16} className="text-success" />
-                      </button>
-                      {q.status === 'pending' && (
+
+                      {/* Sales Manager & Admin Actions */}
+                      {(isAdmin || profile?.role === 'sales_manager') && q.status === 'pending_manager' && (
                         <>
                           <button
                             className="btn btn-ghost btn-sm"
-                            onClick={() => handleStatusChange(q, 'accepted')}
-                            title="قبول"
+                            onClick={() => handleStatusChange(q, 'manager_approved')}
+                            title="اعتماد الإدارة"
                           >
                             <Check size={16} className="text-success" />
                           </button>
                           <button
                             className="btn btn-ghost btn-sm"
-                            onClick={() => handleStatusChange(q, 'rejected')}
-                            title="رفض"
+                            onClick={() => handleStatusChange(q, 'manager_rejected')}
+                            title="رفض الإدارة"
                           >
                             <X size={16} className="text-danger" />
                           </button>
+                        </>
+                      )}
+
+                      {/* Manager Final Decision Actions */}
+                      {(isAdmin || profile?.role === 'sales_manager') && ['client_accepted', 'client_negotiating', 'client_rejected'].includes(q.status) && (
+                        <>
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => handleStatusChange(q, 'final_approved')} // Will open contract modal
+                            title="اعتماد نهائي (تحويل لعقد)"
+                          >
+                            <Check size={16} className="text-success" />
+                          </button>
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => handleStatusChange(q, 'final_rejected')}
+                            title="رفض نهائي"
+                          >
+                            <X size={16} className="text-danger" />
+                          </button>
+                        </>
+                      )}
+
+                      {/* Sales Rep / Admin Actions */}
+                      {(isAdmin || profile?.role === 'sales_rep') && q.status === 'manager_approved' && (
+                        <>
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => {
+                              handleStatusChange(q, 'sent');
+                              sendWhatsApp(q);
+                            }}
+                            title="إرسال للعميل"
+                          >
+                            <Send size={16} className="text-primary" />
+                          </button>
+                        </>
+                      )}
+
+                      {(isAdmin || profile?.role === 'sales_rep') && q.status === 'sent' && (
+                        <div className="dropdown">
+                          <button className="btn btn-ghost btn-sm" title="رد العميل">
+                            <MessageCircle size={16} className="text-info" />
+                          </button>
+                          <div className="dropdown-content">
+                            <button onClick={() => handleStatusChange(q, 'client_accepted')}>العميل موافق</button>
+                            <button onClick={() => handleStatusChange(q, 'client_negotiating')}>العميل يتفاوض</button>
+                            <button onClick={() => handleStatusChange(q, 'client_rejected')}>العميل رافض</button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Legacy actions support */}
+                      {q.status === 'pending' && isAdmin && (
+                        <>
+                          <button className="btn btn-ghost btn-sm" onClick={() => handleStatusChange(q, 'manager_approved')} title="تحويل للإدارة"><Check size={16} className="text-success" /></button>
                         </>
                       )}
                     </div>
