@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, formatCurrency, formatDate, CITIES, QUOTATION_STATUS, PAYMENT_METHODS, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Phone, Mail, MapPin, Building2, FileText, DollarSign, Plus, ArrowRight, X, Calendar, MessageCircle, Navigation, Printer, Edit, Trash2 } from 'lucide-react';
 import { notifyIntegrations, openGoogleMaps, openWhatsApp } from '../lib/integrations';
+import { useAutocomplete } from '../contexts/AutocompleteContext';
+import SmartInput from '../components/SmartInput';
 
 const QUOTATION_DETAIL_SECTIONS = [
   {
@@ -95,6 +96,7 @@ function ClientProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const { saveMemory } = useAutocomplete();
 
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -642,6 +644,18 @@ function ClientProfile() {
           error = fallback.error;
         }
         if (error) throw error;
+
+        // Save memory for autocomplete
+        const memoryItems = [];
+        if (quickForm.title) memoryItems.push({ category: 'quotation_title', value: quickForm.title });
+        QUOTATION_DETAIL_SECTIONS.forEach(section => {
+          section.fields.forEach(([field, label, type = 'text']) => {
+            if (type === 'text' && quickForm.details?.[section.key]?.[field]) {
+              memoryItems.push({ category: field, value: quickForm.details[section.key][field] });
+            }
+          });
+        });
+        saveMemory(memoryItems);
         await logActivity(
           profile?.id,
           profile?.full_name,
@@ -1549,14 +1563,24 @@ function ClientProfile() {
                             {section.fields.map(([field, label, type = 'text']) => (
                               <div className="form-group" key={`${section.key}-${field}`}>
                                 <label className="form-label">{label}</label>
-                                <input
-                                  type={type}
-                                  className="form-input"
-                                  value={quickForm.details?.[section.key]?.[field] || ''}
-                                  onChange={(e) => handleQuickQuotationDetailChange(section.key, field, e.target.value)}
-                                  min={type === 'number' ? '0' : undefined}
-                                  step={type === 'number' ? '0.01' : undefined}
-                                />
+                                {type === 'text' ? (
+                                  <SmartInput
+                                    category={field}
+                                    type={type}
+                                    className="form-input"
+                                    value={quickForm.details?.[section.key]?.[field] || ''}
+                                    onChange={(e) => handleQuickQuotationDetailChange(section.key, field, e.target.value)}
+                                  />
+                                ) : (
+                                  <input
+                                    type={type}
+                                    className="form-input"
+                                    value={quickForm.details?.[section.key]?.[field] || ''}
+                                    onChange={(e) => handleQuickQuotationDetailChange(section.key, field, e.target.value)}
+                                    min={type === 'number' ? '0' : undefined}
+                                    step={type === 'number' ? '0.01' : undefined}
+                                  />
+                                )}
                               </div>
                             ))}
                           </div>

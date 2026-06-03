@@ -141,3 +141,29 @@ BEGIN
       FOR DELETE USING (auth.uid() IS NOT NULL);
   END IF;
 END $$;
+
+-- ==============================================
+-- تأكيد البريد الإلكتروني تلقائياً للمستخدمين الجدد والحاليين
+-- ==============================================
+
+-- 1. تأكيد البريد الإلكتروني لجميع المستخدمين الحاليين في النظام الذين لم يتم تأكيدهم
+UPDATE auth.users 
+SET email_confirmed_at = NOW() 
+WHERE email_confirmed_at IS NULL;
+
+-- 2. دالة وتريجر لتأكيد البريد الإلكتروني تلقائياً لأي مستخدم جديد يتم إضافته مستقبلاً
+CREATE OR REPLACE FUNCTION public.confirm_email_automatically()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.email_confirmed_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- حذف التريجر إذا كان موجوداً مسبقاً لمنع التكرار
+DROP TRIGGER IF EXISTS on_auth_user_before_created ON auth.users;
+
+-- إنشاء التريجر قبل عملية الإدخال لتعديل الحقول مباشرة
+CREATE TRIGGER on_auth_user_before_created
+  BEFORE INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.confirm_email_automatically();

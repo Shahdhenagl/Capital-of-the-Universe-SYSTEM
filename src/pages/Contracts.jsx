@@ -18,6 +18,8 @@ import {
   Upload,
   X
 } from 'lucide-react';
+import { useAutocomplete } from '../contexts/AutocompleteContext';
+import SmartInput from '../components/SmartInput';
 
 const CONTRACT_TYPES = {
   supply_installation: 'توريد وتركيب مصاعد',
@@ -226,6 +228,7 @@ function parseNotes(notes) {
 
 function Contracts({ cityFilter = 'all' }) {
   const { profile } = useAuth();
+  const { saveMemory } = useAutocomplete();
 
   const [contracts, setContracts] = useState([]);
   const [clients, setClients] = useState([]);
@@ -674,6 +677,18 @@ function Contracts({ cityFilter = 'all' }) {
         `${editingContract ? 'تم تعديل' : renewingContract ? 'تم تجديد' : 'تم إنشاء'} العقد ${form.contract_number}`,
         form.branch
       );
+
+      // Save memory for autocomplete
+      const memoryItems = [];
+      const currentSections = form.contract_type === 'maintenance' ? MAINTENANCE_SECTIONS : INSTALL_SECTIONS;
+      currentSections.forEach(section => {
+        section.fields.forEach(([field, label, type = 'text']) => {
+          if (type === 'text' && form.details?.[section.key]?.[field]) {
+            memoryItems.push({ category: field, value: form.details[section.key][field] });
+          }
+        });
+      });
+      saveMemory(memoryItems);
 
       closeFormModal();
       fetchData();
@@ -1129,12 +1144,22 @@ function Contracts({ cityFilter = 'all' }) {
                         {section.fields.map(([field, label, type = 'text']) => (
                           <div className="form-group" key={`${section.key}-${field}`}>
                             <label className="form-label">{label}</label>
-                            <input
-                              type={type}
-                              className="form-input"
-                              value={form.details?.[section.key]?.[field] || ''}
-                              onChange={e => updateDetail(section.key, field, e.target.value)}
-                            />
+                            {type === 'text' ? (
+                              <SmartInput
+                                category={field}
+                                type={type}
+                                className="form-input"
+                                value={form.details?.[section.key]?.[field] || ''}
+                                onChange={e => updateDetail(section.key, field, e.target.value)}
+                              />
+                            ) : (
+                              <input
+                                type={type}
+                                className="form-input"
+                                value={form.details?.[section.key]?.[field] || ''}
+                                onChange={e => updateDetail(section.key, field, e.target.value)}
+                              />
+                            )}
                           </div>
                         ))}
                       </div>

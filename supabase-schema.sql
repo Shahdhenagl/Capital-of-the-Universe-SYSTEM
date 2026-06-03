@@ -560,6 +560,19 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- دالة وتريجر لتأكيد البريد الإلكتروني تلقائياً للمستخدمين الجدد
+CREATE OR REPLACE FUNCTION public.confirm_email_automatically()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.email_confirmed_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_auth_user_before_created
+  BEFORE INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.confirm_email_automatically();
+
 -- دالة لتوليد رقم عرض سعر تلقائياً
 CREATE OR REPLACE FUNCTION generate_quotation_number()
 RETURNS TEXT AS $$

@@ -90,11 +90,15 @@ function AppRoutes() {
   );
 }
 
+import { AutocompleteProvider } from './contexts/AutocompleteContext';
+
 export default function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppRoutes />
+        <AutocompleteProvider>
+          <AppRoutes />
+        </AutocompleteProvider>
       </AuthProvider>
     </Router>
   );

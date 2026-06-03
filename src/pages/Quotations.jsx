@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase, formatCurrency, formatDate, QUOTATION_STATUS, PAYMENT_FREQUENCIES, PAYMENT_METHODS, CITIES, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { FileText, Plus, Search, Send, Check, X, Eye, Filter, MessageCircle, Printer } from 'lucide-react';
+import { useAutocomplete } from '../contexts/AutocompleteContext';
+import SmartInput from '../components/SmartInput';
 
 const QUOTATION_DETAIL_SECTIONS = [
   {
@@ -128,7 +130,8 @@ function getSafeStoragePath(folder, file, fallbackExtension = 'pdf') {
 }
 
 function Quotations({ cityFilter: globalCityFilter = 'all' }) {
-  const { profile } = useAuth();
+  const { profile, hasPermission } = useAuth();
+  const { saveMemory } = useAutocomplete();
   const navigate = useNavigate();
 
   const [quotations, setQuotations] = useState([]);
@@ -379,6 +382,18 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
         `عرض سعر جديد: ${form.title} - ${formatCurrency(parseFloat(form.amount))}`,
         profile?.branch
       );
+
+      // Save memory for autocomplete
+      const memoryItems = [];
+      if (form.title) memoryItems.push({ category: 'quotation_title', value: form.title });
+      QUOTATION_DETAIL_SECTIONS.forEach(section => {
+        section.fields.forEach(([field, label, type = 'text']) => {
+          if (type === 'text' && form.details?.[section.key]?.[field]) {
+            memoryItems.push({ category: field, value: form.details[section.key][field] });
+          }
+        });
+      });
+      saveMemory(memoryItems);
 
       resetForm();
       setShowAddModal(false);
@@ -805,8 +820,8 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
 
                 <div className="form-group">
                   <label className="form-label">عنوان العرض *</label>
-                  <input
-                    type="text"
+                  <SmartInput
+                    category="quotation_title"
                     className="form-input"
                     value={form.title}
                     onChange={(e) => handleFormChange('title', e.target.value)}
@@ -825,14 +840,24 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                         {section.fields.map(([field, label, type = 'text']) => (
                           <div className="form-group" key={`${section.key}-${field}`}>
                             <label className="form-label">{label}</label>
-                            <input
-                              type={type}
-                              className="form-input"
-                              value={form.details?.[section.key]?.[field] || ''}
-                              onChange={(e) => handleDetailChange(section.key, field, e.target.value)}
-                              min={type === 'number' ? '0' : undefined}
-                              step={type === 'number' ? '0.01' : undefined}
-                            />
+                            {type === 'text' ? (
+                              <SmartInput
+                                category={field}
+                                type={type}
+                                className="form-input"
+                                value={form.details?.[section.key]?.[field] || ''}
+                                onChange={(e) => handleDetailChange(section.key, field, e.target.value)}
+                              />
+                            ) : (
+                              <input
+                                type={type}
+                                className="form-input"
+                                value={form.details?.[section.key]?.[field] || ''}
+                                onChange={(e) => handleDetailChange(section.key, field, e.target.value)}
+                                min={type === 'number' ? '0' : undefined}
+                                step={type === 'number' ? '0.01' : undefined}
+                              />
+                            )}
                           </div>
                         ))}
                       </div>
