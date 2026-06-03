@@ -22,6 +22,7 @@ import { useAutocomplete } from '../contexts/AutocompleteContext';
 import SmartInput from '../components/SmartInput';
 import PrintHeader from '../components/PrintHeader';
 import PrintFooter from '../components/PrintFooter';
+import ContractPrintTemplate from '../components/ContractPrintTemplate';
 
 const CONTRACT_TYPES = {
   supply_installation: 'توريد وتركيب مصاعد',
@@ -1349,127 +1350,7 @@ function Contracts({ cityFilter = 'all' }) {
       )}
 
       {/* Print PDF Vector Document Section for Contracts */}
-      {printContractItem && (() => {
-        const details = printContractItem.meta?.details || {};
-        return (
-          <div className="print-only-container">
-            <PrintHeader />
-
-            <div style={{ textAlign: 'left', direction: 'ltr', marginBottom: '20px' }}>
-              <p>رقم العقد: <strong>{printContractItem.contract_number}</strong></p>
-              <p>تاريخ الطباعة: {new Date().toLocaleDateString('ar-SA')}</p>
-            </div>
-
-            <div className="print-title">عقد {CONTRACT_TYPES[printContractItem.contract_type]} رسمي ومبرم</div>
-
-            <div className="print-meta-grid">
-              <div className="print-meta-item">
-                <span>اسم العميل الطرف الثاني</span>
-                <strong>{printContractItem.clients?.name || '-'}</strong>
-              </div>
-              <div className="print-meta-item">
-                <span>نوع العقد والخدمة</span>
-                <strong>{CONTRACT_TYPES[printContractItem.contract_type]}</strong>
-              </div>
-              <div className="print-meta-item">
-                <span>إجمالي قيمة العقد</span>
-                <strong style={{ color: '#10b981' }}>{formatCurrency(printContractItem.total_amount)}</strong>
-              </div>
-              <div className="print-meta-item">
-                <span>فرع التعاقد</span>
-                <strong>{CITIES[printContractItem.branch] || printContractItem.branch || '-'}</strong>
-              </div>
-            </div>
-
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '15px', color: '#1e3a8a', borderBottom: '1px solid #e2e8f0', paddingBottom: '5px' }}>
-              تفاصيل بنود الاتفاق والبيانات الفنية
-            </h3>
-
-            <table className="print-table">
-              <tbody>
-                <tr>
-                  <th>رقم العقد</th>
-                  <td><strong>{printContractItem.contract_number}</strong></td>
-                  <th>اسم العميل</th>
-                  <td>{printContractItem.clients?.name || '-'}</td>
-                </tr>
-                <tr>
-                  <th>قيمة التعاقد</th>
-                  <td><strong>{formatCurrency(printContractItem.total_amount)}</strong></td>
-                  <th>طريقة الدفع</th>
-                  <td>{PAYMENT_METHODS[printContractItem.payment_method] || printContractItem.payment_method}</td>
-                </tr>
-                <tr>
-                  <th>تاريخ البداية</th>
-                  <td>{formatDate(printContractItem.start_date)}</td>
-                  <th>تاريخ النهاية</th>
-                  <td>{formatDate(printContractItem.end_date)}</td>
-                </tr>
-                <tr>
-                  <th>الموقع / العنوان</th>
-                  <td colSpan={3}>{details.contract?.project_location || details.contract?.facility_location || '-'}</td>
-                </tr>
-                <tr>
-                  <th>ماركة المصعد</th>
-                  <td>{details.contract?.elevator_brand || '-'}</td>
-                  <th>حالة العقد</th>
-                  <td>{CONTRACT_STATUS_LABELS[printContractItem.status] || printContractItem.status}</td>
-                </tr>
-              </tbody>
-            </table>
-
-            {printContractItem.payment_schedule && printContractItem.payment_schedule.length > 0 && (
-              <>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginTop: '25px', marginBottom: '15px', color: '#1e3a8a', borderBottom: '1px solid #e2e8f0', paddingBottom: '5px' }}>
-                  جدول الدفعات المبرم والتحصيلات المتفق عليها
-                </h3>
-                <table className="print-table">
-                  <thead>
-                    <tr>
-                      <th>م</th>
-                      <th>الدفعة / البند</th>
-                      <th>النسبة من العقد (%)</th>
-                      <th>المبلغ المستحق (ر.س)</th>
-                      <th>تاريخ الاستحقاق</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {printContractItem.payment_schedule.map((row, idx) => (
-                      <tr key={idx}>
-                        <td>{idx + 1}</td>
-                        <td>{row.label}</td>
-                        <td>{row.percentage}%</td>
-                        <td><strong>{formatCurrency(row.amount)}</strong></td>
-                        <td>{row.due_date ? formatDate(row.due_date) : 'غير محدد'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
-            )}
-
-            {printContractItem.notes && (
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '15px', borderRadius: '8px', marginTop: '20px' }}>
-                <span style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '5px' }}>ملاحظات وشروط إضافية:</span>
-                <p style={{ margin: 0, color: '#334155', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>{printContractItem.notes}</p>
-              </div>
-            )}
-
-            <div className="print-footer" style={{ marginTop: '40px' }}>
-              <div className="print-signature">
-                <span>الطرف الأول (الشركة)</span>
-                <strong>التوقيع والختم الرسمي</strong>
-              </div>
-              <div className="print-signature">
-                <span>الطرف الثاني (العميل)</span>
-                <strong>موافقة وتوقيع الطرف الثاني</strong>
-              </div>
-            </div>
-
-            <PrintFooter />
-          </div>
-        );
-      })()}
+      {printContractItem && <ContractPrintTemplate contract={printContractItem} />}
     </div>
   );
 }

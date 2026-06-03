@@ -2122,5 +2122,31 @@ a:hover {
   .data-table.invoice-table th {
     background: #ecfeff !important;
   }
+
+  /* Contract Print Multi-Page Setup */
+  .print-contract-multi-page {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .contract-page {
+    page-break-after: always;
+    position: relative;
+    padding: 20px 40px;
+    height: 100vh;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .contract-page:last-child {
+    page-break-after: auto;
+  }
+
+  .contract-page .print-header,
+  .contract-page .print-footer {
+    flex-shrink: 0;
+  }
 }
 
