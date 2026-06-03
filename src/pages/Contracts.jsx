@@ -656,6 +656,7 @@ function Contracts({ cityFilter = 'all' }) {
         await supabase.from('collection_schedule').delete().eq('contract_id', editingContract.id);
       }
 
+      let insertedCollections = [];
       const validPayments = form.payment_schedule.filter(row => row.amount && row.due_date);
       if (validPayments.length > 0) {
         const scheduleRows = validPayments.map(row => ({
@@ -667,8 +668,44 @@ function Contracts({ cityFilter = 'all' }) {
           notes: row.label || null,
           branch: form.branch
         }));
-        const { error: scheduleError } = await supabase.from('collection_schedule').insert(scheduleRows);
+        const { data: cols, error: scheduleError } = await supabase.from('collection_schedule').insert(scheduleRows).select();
         if (scheduleError) throw scheduleError;
+        insertedCollections = cols || [];
+      }
+
+      if (form.contract_type === 'maintenance') {
+        if (editingContract) {
+          // Delete future pending visits to regenerate them
+          await supabase.from('maintenance_visits').delete()
+            .eq('contract_id', editingContract.id)
+            .eq('status', 'pending');
+        }
+
+        const startDate = new Date(form.start_date);
+        const endDate = new Date(form.end_date || new Date(startDate).setFullYear(startDate.getFullYear() + 1));
+        let currentDate = new Date(startDate);
+        // Start from next month if we want the first visit after a month, or start immediately. Usually visits are monthly.
+        
+        const visits = [];
+        while (currentDate <= endDate) {
+          const currentMonthStr = currentDate.toISOString().slice(0, 7);
+          const matchedCollection = insertedCollections.find(c => c.due_date.startsWith(currentMonthStr));
+          
+          visits.push({
+            contract_id: contractData.id,
+            client_id: form.client_id,
+            scheduled_date: currentDate.toISOString().split('T')[0],
+            status: 'pending',
+            has_collection: !!matchedCollection,
+            collection_id: matchedCollection ? matchedCollection.id : null,
+            branch: form.branch
+          });
+          currentDate.setMonth(currentDate.getMonth() + 1);
+        }
+
+        if (visits.length > 0) {
+          await supabase.from('maintenance_visits').insert(visits);
+        }
       }
 
       await logActivity(

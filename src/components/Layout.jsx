@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import {
   LayoutDashboard, Users, FileText, Wallet, TrendingDown, TrendingUp,
   Package, UserCog, BarChart3, Bell, Activity, Shield, LogOut,
-  Menu, X, ChevronLeft, Building2, FileCheck, Coins, Plug, BriefcaseBusiness
+  Menu, X, ChevronLeft, Building2, FileCheck, Coins, Plug, BriefcaseBusiness, Calendar
 } from 'lucide-react';
 
 const navItems = [
@@ -17,6 +17,7 @@ const navItems = [
   { path: '/clients', label: 'العملاء', icon: Users, permission: 'clients.view' },
   { path: '/quotations', label: 'عروض الأسعار', icon: FileText, permission: 'quotations.view' },
   { path: '/contracts', label: 'العقود', icon: FileCheck, permission: 'contracts.view' },
+  { path: '/maintenance', label: 'حركات الصيانة', icon: Calendar, permission: 'maintenance.view' },
   { path: '/collections', label: 'التحصيلات', icon: Wallet, permission: 'collections.view' },
   
   { section: 'المالية' },
@@ -51,9 +52,10 @@ export default function Layout({ children, cityFilter, setCityFilter }) {
       // Run weekly collections check once on load/login
       const alreadyChecked = sessionStorage.getItem('weekly_collections_checked');
       if (!alreadyChecked) {
-        import('../lib/integrations').then(({ checkWeeklyCollections, checkLowStockParts }) => {
+        import('../lib/integrations').then(({ checkWeeklyCollections, checkLowStockParts, checkUpcomingVisits }) => {
           checkWeeklyCollections(profile.id, profile.full_name, profile.branch);
           checkLowStockParts(profile.id, profile.full_name, profile.branch);
+          checkUpcomingVisits(profile.id, profile.full_name, profile.branch);
           sessionStorage.setItem('weekly_collections_checked', 'true');
         }).catch(err => console.error(err));
       }

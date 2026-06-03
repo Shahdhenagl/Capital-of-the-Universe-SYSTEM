@@ -285,3 +285,56 @@ export async function checkLowStockParts(userId, userName, userBranch) {
     console.error('Error checking low stock parts:', err);
   }
 }
+
+export async function checkUpcomingVisits(userId, userName, userBranch) {
+  try {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    const nextWeekStr = nextWeek.toISOString().split('T')[0];
+
+    const { data: dueItems, error } = await supabase
+      .from('maintenance_visits')
+      .select('*, clients(name, phone), contracts(contract_number)')
+      .eq('status', 'pending')
+      .gte('scheduled_date', todayStr)
+      .lte('scheduled_date', nextWeekStr);
+
+    if (error) throw error;
+    if (!dueItems || dueItems.length === 0) return;
+
+    for (const item of dueItems) {
+      const notifTitle = `زيارة صيانة قريبة`;
+      const notifMsg = `يوجد زيارة صيانة مجدولة للعميل ${item.clients?.name || ''} بتاريخ ${item.scheduled_date}`;
+
+      const { data: existing } = await supabase
+        .from('notifications')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('title', notifTitle)
+        .like('message', `%${item.clients?.name}%`)
+        .limit(1);
+
+      if (!existing || existing.length === 0) {
+        await supabase.from('notifications').insert({
+          user_id: userId,
+          title: notifTitle,
+          message: notifMsg,
+          type: 'info',
+          link: '/maintenance'
+        });
+
+        await notifyIntegrations({
+          title: `🛠️ تنبيه صيانة: ${notifTitle}`,
+          message: notifMsg,
+          actor: userName,
+          branch: CITIES[item.branch] || item.branch,
+          lines: [`رقم العقد: ${item.contracts?.contract_number || '-'}`],
+          link: '/maintenance'
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Error checking upcoming visits:', err);
+  }
+}
