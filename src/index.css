@@ -2001,6 +2001,56 @@ a:hover {
     padding: 0 !important;
     box-sizing: border-box;
   }
+
+  .print-only-container * {
+    color: #0f172a !important;
+    text-shadow: none !important;
+  }
+
+  .print-only-container .text-muted,
+  .print-only-container span {
+    color: #475569 !important;
+  }
+
+  .print-only-container .data-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    page-break-inside: auto !important;
+  }
+
+  .print-only-container .data-table thead,
+  .print-only-container .data-table th {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+  }
+
+  .print-only-container .data-table tr,
+  .print-only-container .data-table td,
+  .print-only-container .data-table th {
+    border: 1px solid #94a3b8 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+  }
+
+  .print-only-container .data-table th {
+    background: #e2e8f0 !important;
+    font-weight: 800 !important;
+  }
+
+  .print-only-container .data-table tr {
+    page-break-inside: avoid !important;
+  }
+
+  .print-only-container .table-container {
+    overflow: visible !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: 0 !important;
+  }
   
   #root, .app-layout, .main-content, .page-content {
     display: block !important;

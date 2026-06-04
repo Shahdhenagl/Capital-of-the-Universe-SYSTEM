@@ -332,7 +332,7 @@ function QuotationDetails() {
     setTimeout(() => {
       window.print();
       setPrintItem(null);
-    }, 100);
+    }, 500);
   }
 
   function sendWhatsApp() {

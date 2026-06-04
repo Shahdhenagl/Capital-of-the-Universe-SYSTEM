@@ -172,7 +172,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
     setTimeout(() => {
       window.print();
       setPrintItem(null);
-    }, 300);
+    }, 500);
   }
 
   // New quotation modal
