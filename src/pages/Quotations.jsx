@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { FileText, Plus, Search, Send, Check, X, Eye, Filter, MessageCircle, Printer } from 'lucide-react';
 import { useAutocomplete } from '../contexts/AutocompleteContext';
 import SmartInput from '../components/SmartInput';
+import ClientSearchSelect from '../components/ClientSearchSelect';
 import PrintHeader from '../components/PrintHeader';
 import PrintFooter from '../components/PrintFooter';
 
@@ -90,6 +91,9 @@ const QUOTATION_DETAIL_SECTIONS = [
 function createEmptyQuotationDetails() {
   return QUOTATION_DETAIL_SECTIONS.reduce((acc, section) => {
     acc[section.key] = {};
+    section.fields.forEach(([field, , type]) => {
+      if (type === 'checkbox') acc[section.key][field] = true;
+    });
     return acc;
   }, {});
 }
@@ -880,17 +884,18 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">العميل *</label>
-                    <select
-                      className="form-select"
+                    <ClientSearchSelect
                       value={form.client_id}
-                      onChange={(e) => handleFormChange('client_id', e.target.value)}
+                      onSelect={(client) => {
+                        if (!clients.find(c => c.id === client.id)) {
+                          setClients(prev => [client, ...prev]);
+                        }
+                        handleFormChange('client_id', client.id);
+                      }}
+                      onClear={() => handleFormChange('client_id', '')}
+                      clients={clients}
                       required
-                    >
-                      <option value="">اختر العميل</option>
-                      {clients.map(c => (
-                        <option key={c.id} value={c.id}>{c.name} - {c.phone}</option>
-                      ))}
-                    </select>
+                    />
                   </div>
                   <div className="form-group">
                     <label className="form-label">نوع الخدمة</label>
@@ -929,7 +934,17 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                         {section.fields.map(([field, label, type = 'text']) => (
                           <div className="form-group" key={`${section.key}-${field}`}>
                             <label className="form-label">{label}</label>
-                            {type === 'text' ? (
+                            {type === 'checkbox' ? (
+                              <div className="flex items-center gap-8 mt-8">
+                                <input
+                                  type="checkbox"
+                                  checked={form.details?.[section.key]?.[field] === true || form.details?.[section.key]?.[field] === 'مشمول'}
+                                  onChange={(e) => handleDetailChange(section.key, field, e.target.checked)}
+                                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                                />
+                                <span>مشمول</span>
+                              </div>
+                            ) : type === 'text' ? (
                               <SmartInput
                                 category={field}
                                 type={type}

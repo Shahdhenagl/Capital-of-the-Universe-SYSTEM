@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useAutocomplete } from '../contexts/AutocompleteContext';
 import SmartInput from '../components/SmartInput';
+import ClientSearchSelect from '../components/ClientSearchSelect';
 import PrintHeader from '../components/PrintHeader';
 import PrintFooter from '../components/PrintFooter';
 import ContractPrintTemplate from '../components/ContractPrintTemplate';
@@ -58,7 +59,15 @@ const EMPTY_FORM = {
     customer: {},
     elevator: {},
     finishes: {},
-    safety: {},
+    safety: {
+      limit_switch: true,
+      parachute: true,
+      revision_device: true,
+      oilers: true,
+      flexible_cable: true,
+      shock_absorbers: true,
+      fire_brake_device: true
+    },
     maintenance: {},
     visits: {},
     sla: {},
@@ -256,6 +265,7 @@ function Contracts({ cityFilter = 'all' }) {
   const [saving, setSaving] = useState(false);
   const [plainNotes, setPlainNotes] = useState('');
   const [printContractItem, setPrintContractItem] = useState(null);
+  const [clientSitesFromSearch, setClientSitesFromSearch] = useState([]);
 
   const [form, setForm] = useState(cloneForm);
   const [filterStatus, setFilterStatus] = useState('');
@@ -351,7 +361,9 @@ function Contracts({ cityFilter = 'all' }) {
   });
 
   const selectedClient = clients.find(client => client.id === form.client_id);
-  const savedClientSites = sites.filter(site => site.client_id === form.client_id);
+  const savedClientSites = clientSitesFromSearch.length > 0
+    ? clientSitesFromSearch
+    : sites.filter(site => site.client_id === form.client_id);
   const clientAddressSite = selectedClient?.address
     ? {
       id: CLIENT_ADDRESS_SITE_ID,
@@ -363,6 +375,21 @@ function Contracts({ cityFilter = 'all' }) {
     }
     : null;
   const clientSites = clientAddressSite ? [...savedClientSites, clientAddressSite] : savedClientSites;
+
+  function handleClientSelect(client, clientSitesList) {
+    setClientSitesFromSearch(clientSitesList || []);
+    // Add client to local list if not present
+    if (!clients.find(c => c.id === client.id)) {
+      setClients(prev => [client, ...prev]);
+    }
+    // Update form via the existing updateForm which handles auto-fill
+    updateForm('client_id', client.id);
+  }
+
+  function handleClientClear() {
+    setClientSitesFromSearch([]);
+    updateForm('client_id', '');
+  }
 
   function getStatusBadge(status) {
     const map = {
@@ -1196,12 +1223,13 @@ function Contracts({ cityFilter = 'all' }) {
                     <div className="form-row-3">
                       <div className="form-group">
                         <label className="form-label">العميل *</label>
-                        <select className="form-select" value={form.client_id} onChange={e => updateForm('client_id', e.target.value)} required>
-                          <option value="">اختر العميل</option>
-                          {clients.map(client => (
-                            <option key={client.id} value={client.id}>{client.name}</option>
-                          ))}
-                        </select>
+                        <ClientSearchSelect
+                          value={form.client_id}
+                          onSelect={handleClientSelect}
+                          onClear={handleClientClear}
+                          clients={clients}
+                          required
+                        />
                       </div>
                       <div className="form-group">
                         <label className="form-label">المشروع / موقع العميل</label>
@@ -1234,7 +1262,17 @@ function Contracts({ cityFilter = 'all' }) {
                         {section.fields.map(([field, label, type = 'text']) => (
                           <div className="form-group" key={`${section.key}-${field}`}>
                             <label className="form-label">{label}</label>
-                            {type === 'text' ? (
+                            {type === 'checkbox' ? (
+                              <div className="flex items-center gap-8 mt-8">
+                                <input
+                                  type="checkbox"
+                                  checked={form.details?.[section.key]?.[field] === true || form.details?.[section.key]?.[field] === 'مشمول'}
+                                  onChange={(e) => updateDetail(section.key, field, e.target.checked)}
+                                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                                />
+                                <span>مشمول</span>
+                              </div>
+                            ) : type === 'text' ? (
                               <SmartInput
                                 category={field}
                                 type={type}

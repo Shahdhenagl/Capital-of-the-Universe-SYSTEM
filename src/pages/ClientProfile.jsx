@@ -91,6 +91,9 @@ const QUOTATION_DETAIL_SECTIONS = [
 function createEmptyQuotationDetails() {
   return QUOTATION_DETAIL_SECTIONS.reduce((acc, section) => {
     acc[section.key] = {};
+    section.fields.forEach(([field, , type]) => {
+      if (type === 'checkbox') acc[section.key][field] = true;
+    });
     return acc;
   }, {});
 }
@@ -1584,7 +1587,17 @@ function ClientProfile() {
                             {section.fields.map(([field, label, type = 'text']) => (
                               <div className="form-group" key={`${section.key}-${field}`}>
                                 <label className="form-label">{label}</label>
-                                {type === 'text' ? (
+                                {type === 'checkbox' ? (
+                                  <div className="flex items-center gap-8 mt-8">
+                                    <input
+                                      type="checkbox"
+                                      checked={quickForm.details?.[section.key]?.[field] === true || quickForm.details?.[section.key]?.[field] === 'مشمول'}
+                                      onChange={(e) => handleQuickQuotationDetailChange(section.key, field, e.target.checked)}
+                                      style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                                    />
+                                    <span>مشمول</span>
+                                  </div>
+                                ) : type === 'text' ? (
                                   <SmartInput
                                     category={field}
                                     type={type}
