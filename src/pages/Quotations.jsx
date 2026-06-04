@@ -124,6 +124,13 @@ function parseQuotationNotes(notes) {
   }
 }
 
+function mergeQuotationNotes(notes, patch) {
+  return JSON.stringify({
+    ...parseQuotationNotes(notes),
+    ...patch
+  });
+}
+
 function hasDetailValue(value) {
   return value !== undefined && value !== null && value !== '';
 }
@@ -272,6 +279,26 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
 
   function handleFormChange(field, value) {
     setForm(prev => ({ ...prev, [field]: value }));
+  }
+
+  async function fetchNotificationUsers(roles = []) {
+    const query = supabase.from('profiles').select('id, role').neq('is_active', false);
+    if (roles.length) query.in('role', roles);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function notifyUsers(users, title, message, type = 'info', link = '/quotations') {
+    const uniqueUsers = Array.from(new Map((users || []).filter(u => u?.id).map(u => [u.id, u])).values());
+    if (!uniqueUsers.length) return;
+    await supabase.from('notifications').insert(uniqueUsers.map(user => ({
+      user_id: user.id,
+      title,
+      message,
+      type,
+      link
+    })));
   }
 
   function handleClientSelect(client, sites = []) {
@@ -460,21 +487,14 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
       );
 
       // Notify Sales Managers
-      const { data: managers } = await supabase
-        .from('profiles')
-        .select('id')
-        .in('role', ['admin', 'sales_manager']);
-      
-      if (managers && managers.length > 0) {
-        const notifInserts = managers.map(m => ({
-          user_id: m.id,
-          title: 'عرض سعر بانتظار الاعتماد',
-          message: `عرض سعر جديد (${form.title}) يحتاج لمراجعتك.`,
-          type: 'warning',
-          link: '/quotations'
-        }));
-        await supabase.from('notifications').insert(notifInserts);
-      }
+      const managers = await fetchNotificationUsers(['admin', 'sales_manager']);
+      await notifyUsers(
+        managers,
+        'عرض سعر بانتظار الاعتماد',
+        `عرض سعر جديد (${form.title}) من ${profile?.full_name || profile?.email || 'مندوب المبيعات'} يحتاج لمراجعة المدير.`,
+        'warning',
+        '/quotations'
+      );
 
       // Save memory for autocomplete
       const memoryItems = [];
@@ -515,9 +535,31 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
     }
 
     try {
+      const needsManagerNote = ['manager_approved', 'manager_rejected', 'final_rejected'].includes(newStatus);
+      const managerNote = needsManagerNote
+        ? window.prompt('اكتبي ملاحظة القرار للمندوب:', '')
+        : '';
+      if (managerNote === null) return;
+
+      const statusPatch = { status: newStatus };
+      if (['manager_rejected', 'final_rejected'].includes(newStatus)) {
+        statusPatch.rejection_reason = managerNote || QUOTATION_STATUS[newStatus];
+      }
+      if (needsManagerNote) {
+        const noteKey = newStatus === 'manager_approved' ? 'manager_response' : 'manager_rejection';
+        statusPatch.notes = mergeQuotationNotes(quotation.notes, {
+          [noteKey]: {
+            status: newStatus,
+            note: managerNote || '',
+            by: profile?.full_name || profile?.email || '',
+            at: new Date().toISOString()
+          }
+        });
+      }
+
       const { error } = await supabase
         .from('quotations')
-        .update({ status: newStatus })
+        .update(statusPatch)
         .eq('id', quotation.id);
 
       if (error) throw error;
@@ -532,18 +574,18 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
         profile?.branch
       );
 
-      // Notify the quotation creator if status changed by someone else
-      if (quotation.created_by && quotation.created_by !== profile?.id) {
-        if (newStatus === 'manager_approved' || newStatus === 'manager_rejected' || newStatus === 'final_approved' || newStatus === 'final_rejected') {
-          await supabase.from('notifications').insert({
-            user_id: quotation.created_by,
-            title: `تحديث حالة العرض`,
-            message: `تم تغيير حالة العرض (${quotation.title}) إلى: ${QUOTATION_STATUS[newStatus]}`,
-            type: newStatus.includes('approved') ? 'success' : 'danger',
-            link: '/quotations'
-          });
-        }
+      const recipients = [];
+      if (quotation.created_by) recipients.push({ id: quotation.created_by });
+      if (['client_accepted', 'client_negotiating', 'client_rejected'].includes(newStatus)) {
+        recipients.push(...await fetchNotificationUsers(['admin', 'sales_manager']));
       }
+      await notifyUsers(
+        recipients,
+        'تحديث حالة عرض السعر',
+        `تم تغيير حالة العرض (${quotation.title}) إلى: ${QUOTATION_STATUS[newStatus]}${managerNote ? ` - ملاحظة: ${managerNote}` : ''}`,
+        newStatus.includes('approved') || newStatus.includes('accepted') ? 'success' : newStatus.includes('rejected') ? 'danger' : 'warning',
+        `/quotations/${quotation.id}`
+      );
 
       fetchQuotations();
     } catch (err) {
@@ -589,7 +631,16 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
       // Update quotation status
       const { error: quotError } = await supabase
         .from('quotations')
-        .update({ status: 'accepted' })
+        .update({
+          status: 'final_approved',
+          notes: mergeQuotationNotes(selectedQuotation.notes, {
+            final_approval: {
+              note: 'تم الاعتماد النهائي وإنشاء عقد',
+              by: profile?.full_name || profile?.email || '',
+              at: new Date().toISOString()
+            }
+          })
+        })
         .eq('id', selectedQuotation.id);
 
       if (quotError) throw quotError;
@@ -674,6 +725,14 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
         profile?.branch
       );
 
+      await notifyUsers(
+        selectedQuotation.created_by ? [{ id: selectedQuotation.created_by }] : [],
+        'تم اعتماد العرض وإنشاء عقد',
+        `تم اعتماد العرض "${selectedQuotation.title}" وإنشاء العقد ${contractNumber}.`,
+        'success',
+        `/quotations/${selectedQuotation.id}`
+      );
+
       setShowContractModal(false);
       setSelectedQuotation(null);
       fetchQuotations();
@@ -701,11 +760,36 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
     window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
   }
 
+  async function remindManagers(quotation) {
+    const managers = await fetchNotificationUsers(['admin', 'sales_manager']);
+    await notifyUsers(
+      managers,
+      'تذكير بمراجعة عرض سعر',
+      `مندوب المبيعات يطلب مراجعة العرض "${quotation.title}" للعميل ${quotation.clients?.name || ''}.`,
+      'warning',
+      `/quotations/${quotation.id}`
+    );
+    alert('تم إرسال تذكير للمديرين.');
+  }
+
+  function remindClient(quotation) {
+    sendWhatsApp(quotation);
+  }
+
   function getStatusBadgeClass(status) {
     const map = {
       pending: 'badge-warning',
       accepted: 'badge-success',
-      rejected: 'badge-danger'
+      rejected: 'badge-danger',
+      pending_manager: 'badge-warning',
+      manager_approved: 'badge-success',
+      manager_rejected: 'badge-danger',
+      sent: 'badge-info',
+      client_negotiating: 'badge-warning',
+      client_accepted: 'badge-success',
+      client_rejected: 'badge-danger',
+      final_approved: 'badge-success',
+      final_rejected: 'badge-danger'
     };
     return map[status] || 'badge-secondary';
   }
@@ -768,30 +852,17 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
           >
             الكل
           </button>
-          <button
-            className={`city-filter-btn ${statusFilter === 'pending_manager' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('pending_manager')}
-          >
-            بانتظار الإدارة
-          </button>
-          <button
-            className={`city-filter-btn ${statusFilter === 'manager_approved' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('manager_approved')}
-          >
-            معتمد
-          </button>
-          <button
-            className={`city-filter-btn ${statusFilter === 'sent' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('sent')}
-          >
-            مرسل للعميل
-          </button>
-          <button
-            className={`city-filter-btn ${statusFilter === 'final_approved' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('final_approved')}
-          >
-            مقبول نهائياً
-          </button>
+          {Object.entries(QUOTATION_STATUS)
+            .filter(([key]) => !['draft', 'pending', 'accepted', 'rejected'].includes(key))
+            .map(([key, label]) => (
+              <button
+                key={key}
+                className={`city-filter-btn ${statusFilter === key ? 'active' : ''}`}
+                onClick={() => setStatusFilter(key)}
+              >
+                {label}
+              </button>
+            ))}
         </div>
         <div className="filter-group">
           <button
@@ -853,6 +924,11 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                       {parseQuotationNotes(q.notes).client_response && (
                         <span className="badge badge-info">
                           رد العميل: {parseQuotationNotes(q.notes).client_response.decision === 'accepted' ? 'موافق' : parseQuotationNotes(q.notes).client_response.decision === 'rejected' ? 'رافض' : 'تفاوض'}
+                        </span>
+                      )}
+                      {(parseQuotationNotes(q.notes).manager_response?.note || parseQuotationNotes(q.notes).manager_rejection?.note) && (
+                        <span className="badge badge-secondary" title={parseQuotationNotes(q.notes).manager_response?.note || parseQuotationNotes(q.notes).manager_rejection?.note}>
+                          ملاحظة المدير
                         </span>
                       )}
                     </div>
@@ -929,6 +1005,26 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                             <Send size={16} className="text-primary" />
                           </button>
                         </>
+                      )}
+
+                      {(isAdmin || profile?.role === 'sales_rep') && ['pending_manager', 'client_negotiating'].includes(q.status) && (
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => remindManagers(q)}
+                          title="تذكير المدير"
+                        >
+                          <MessageCircle size={16} className="text-warning" />
+                        </button>
+                      )}
+
+                      {(isAdmin || profile?.role === 'sales_rep') && ['sent', 'manager_approved'].includes(q.status) && (
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => remindClient(q)}
+                          title="تذكير العميل"
+                        >
+                          <Send size={16} className="text-info" />
+                        </button>
                       )}
 
                       {(isAdmin || profile?.role === 'sales_rep') && q.status === 'sent' && (

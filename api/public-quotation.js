@@ -69,7 +69,7 @@ export default async function handler(req, res) {
         return json(res, 400, { error: 'id and valid decision are required' });
       }
 
-      const rows = await supabaseRequest(`quotations?id=eq.${encodeURIComponent(id)}&select=id,notes,title,amount`);
+      const rows = await supabaseRequest(`quotations?id=eq.${encodeURIComponent(id)}&select=id,notes,title,amount,created_by`);
       const quotation = rows?.[0];
       if (!quotation) return json(res, 404, { error: 'Quotation not found' });
 
@@ -83,7 +83,11 @@ export default async function handler(req, res) {
         responded_at: new Date().toISOString()
       };
 
-      const status = decision === 'accepted' ? 'accepted' : decision === 'rejected' ? 'rejected' : 'pending';
+      const status = decision === 'accepted'
+        ? 'client_accepted'
+        : decision === 'rejected'
+          ? 'client_rejected'
+          : 'client_negotiating';
       const rejectionReason = decision === 'rejected'
         ? notes || 'رفض العميل عرض السعر'
         : decision === 'negotiation'
@@ -104,12 +108,17 @@ export default async function handler(req, res) {
       });
 
       const decisionLabel = decision === 'accepted' ? 'موافق' : decision === 'rejected' ? 'رافض' : 'تفاوض';
-      const users = await supabaseRequest('profiles?is_active=eq.true&select=id');
-      if (users?.length) {
+      const users = await supabaseRequest('profiles?is_active=eq.true&select=id,role');
+      const notificationUsers = (users || []).filter(user =>
+        user.id === quotation.created_by ||
+        ['admin', 'sales_manager'].includes(user.role)
+      );
+      const uniqueUsers = Array.from(new Map(notificationUsers.map(user => [user.id, user])).values());
+      if (uniqueUsers.length) {
         await supabaseRequest('notifications', {
           method: 'POST',
           headers: { Prefer: 'return=minimal' },
-          body: JSON.stringify(users.map(user => ({
+          body: JSON.stringify(uniqueUsers.map(user => ({
             user_id: user.id,
             title: 'رد جديد من العميل على عرض السعر',
             message: `العميل رد على العرض "${quotation.title || quotation.id}" بقرار: ${decisionLabel}${negotiated_amount ? ` - السعر المقترح: ${negotiated_amount}` : ''}${notes ? ` - ${notes}` : ''}`,
