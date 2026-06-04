@@ -113,6 +113,7 @@ export default function ClientSiteSelect({
       onCreate?.(data);
       setShowForm(false);
       setSiteForm(emptySiteForm);
+      alert(`✓ تم إضافة المبنى "${data.site_name}" بنجاح`);
     } catch (err) {
       console.error('Error creating client site:', err);
       alert(`حدث خطأ أثناء إضافة المبنى: ${err.message || 'خطأ غير معروف'}`);
