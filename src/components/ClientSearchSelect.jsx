@@ -264,6 +264,18 @@ export default function ClientSearchSelect({
     }
   }
 
+  function stopInlineFormEvent(e) {
+    e.stopPropagation();
+  }
+
+  function handleInlineFormKeyDown(e) {
+    e.stopPropagation();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSaveNewClient(e);
+    }
+  }
+
   function highlightMatch(text, searchQuery) {
     if (!searchQuery || !text) return text;
     const q = searchQuery.toLowerCase();
@@ -506,7 +518,12 @@ export default function ClientSearchSelect({
 
           {/* New client form */}
           {showNewForm && (
-            <div style={{ padding: '16px' }}>
+            <div
+              style={{ padding: '16px' }}
+              onClick={stopInlineFormEvent}
+              onMouseDown={stopInlineFormEvent}
+              onKeyDown={handleInlineFormKeyDown}
+            >
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -544,7 +561,6 @@ export default function ClientSearchSelect({
                     className="form-input"
                     value={newClient.name}
                     onChange={e => setNewClient(p => ({ ...p, name: e.target.value }))}
-                    required
                     autoFocus
                     style={{ fontSize: '0.88rem' }}
                   />
@@ -565,7 +581,6 @@ export default function ClientSearchSelect({
                         setPhoneError('');
                       }}
                       onBlur={() => checkPhoneUnique(newClient.phone)}
-                      required
                       maxLength={15}
                       style={{
                         fontSize: '0.88rem',

@@ -121,6 +121,18 @@ export default function ClientSiteSelect({
     }
   }
 
+  function stopInlineFormEvent(event) {
+    event.stopPropagation();
+  }
+
+  function handleInlineFormKeyDown(event) {
+    event.stopPropagation();
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleSaveSite(event);
+    }
+  }
+
   if (!clientId) {
     return (
       <div className="empty-state" style={{ padding: '16px', minHeight: 'auto' }}>
@@ -173,7 +185,12 @@ export default function ClientSiteSelect({
       )}
 
       {showForm && (
-        <div className="inline-site-form">
+        <div
+          className="inline-site-form"
+          onClick={stopInlineFormEvent}
+          onMouseDown={stopInlineFormEvent}
+          onKeyDown={handleInlineFormKeyDown}
+        >
           <div className="inline-site-form-header">
             <h4>إضافة مبنى للعميل</h4>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>
@@ -184,7 +201,7 @@ export default function ClientSiteSelect({
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">اسم المبنى / الموقع *</label>
-                <input className="form-input" value={siteForm.site_name} onChange={e => updateSiteForm('site_name', e.target.value)} required />
+                <input className="form-input" value={siteForm.site_name} onChange={e => updateSiteForm('site_name', e.target.value)} />
               </div>
               <div className="form-group">
                 <label className="form-label">المدينة</label>
