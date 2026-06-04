@@ -202,9 +202,8 @@ export default function Layout({ children, cityFilter, setCityFilter }) {
         <header className="navbar">
           <div className="navbar-right">
             <button
-              className="btn-ghost btn-icon"
+              className="btn-ghost btn-icon mobile-menu-btn"
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              style={{ display: 'none' }}
             >
               <Menu size={22} />
             </button>

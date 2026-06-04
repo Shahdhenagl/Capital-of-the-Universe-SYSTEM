@@ -1633,8 +1633,15 @@ a:hover {
   color: var(--text-primary);
 }
 
-/* ===== Responsive ===== */
+.mobile-menu-btn {
+  display: none;
+}
+
 @media (max-width: 1024px) {
+  .mobile-menu-btn {
+    display: flex;
+  }
+
   .sidebar {
     transform: translateX(100%);
   }

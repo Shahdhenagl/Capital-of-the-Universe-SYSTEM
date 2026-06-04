@@ -35,8 +35,18 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. الاستماع لتغيرات الجلسة بشكل متزامن وبسيط لتفادي تعليق أقفال الويب (Web Locks Deadlock)
+  // 1. الاستماع لتغيرات الجلسة وتفادي تعليق أقفال الويب (Web Locks Deadlock)
   useEffect(() => {
+    // الحصول على الجلسة الحالية أولاً لتجنب شاشة التحميل اللانهائية
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const currentUser = session?.user || null;
+      setUser(currentUser);
+      if (!currentUser) {
+        setProfile(null);
+        setLoading(false);
+      }
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         const currentUser = session?.user || null;
