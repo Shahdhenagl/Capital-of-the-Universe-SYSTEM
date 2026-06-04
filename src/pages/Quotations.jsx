@@ -487,7 +487,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
       );
 
       // Notify Sales Managers
-      const managers = await fetchNotificationUsers(['admin', 'sales_manager']);
+      const managers = await fetchNotificationUsers(['admin', 'manager']);
       await notifyUsers(
         managers,
         'عرض سعر بانتظار الاعتماد',
@@ -577,7 +577,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
       const recipients = [];
       if (quotation.created_by) recipients.push({ id: quotation.created_by });
       if (['client_accepted', 'client_negotiating', 'client_rejected'].includes(newStatus)) {
-        recipients.push(...await fetchNotificationUsers(['admin', 'sales_manager']));
+        recipients.push(...await fetchNotificationUsers(['admin', 'manager']));
       }
       await notifyUsers(
         recipients,
@@ -761,7 +761,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
   }
 
   async function remindManagers(quotation) {
-    const managers = await fetchNotificationUsers(['admin', 'sales_manager']);
+    const managers = await fetchNotificationUsers(['admin', 'manager']);
     await notifyUsers(
       managers,
       'تذكير بمراجعة عرض سعر',
@@ -952,7 +952,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                       </button>
 
                       {/* Sales Manager & Admin Actions */}
-                      {(isAdmin || profile?.role === 'sales_manager') && q.status === 'pending_manager' && (
+                      {(isAdmin || profile?.role === 'manager') && q.status === 'pending_manager' && (
                         <>
                           <button
                             className="btn btn-ghost btn-sm"
@@ -972,7 +972,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                       )}
 
                       {/* Manager Final Decision Actions */}
-                      {(isAdmin || profile?.role === 'sales_manager') && ['client_accepted', 'client_negotiating', 'client_rejected'].includes(q.status) && (
+                      {(isAdmin || profile?.role === 'manager') && ['client_accepted', 'client_negotiating', 'client_rejected'].includes(q.status) && (
                         <>
                           <button
                             className="btn btn-ghost btn-sm"

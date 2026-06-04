@@ -111,7 +111,7 @@ export default async function handler(req, res) {
       const users = await supabaseRequest('profiles?is_active=eq.true&select=id,role');
       const notificationUsers = (users || []).filter(user =>
         user.id === quotation.created_by ||
-        ['admin', 'sales_manager'].includes(user.role)
+        ['admin', 'manager'].includes(user.role)
       );
       const uniqueUsers = Array.from(new Map(notificationUsers.map(user => [user.id, user])).values());
       if (uniqueUsers.length) {

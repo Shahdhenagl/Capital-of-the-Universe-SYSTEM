@@ -48,7 +48,7 @@ function Dashboard({ cityFilter }) {
         fetchRecentTransactions(),
         fetchUpcomingCollections(),
         fetchOverdueClients(),
-        (profile?.role === 'sales_manager' || profile?.role === 'admin') ? fetchPendingQuotations() : Promise.resolve()
+        (profile?.role === 'manager' || profile?.role === 'admin') ? fetchPendingQuotations() : Promise.resolve()
       ]);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -556,7 +556,7 @@ function Dashboard({ cityFilter }) {
       </div>
 
       {/* Pending Manager Approvals (Sales Managers & Admins only) */}
-      {(profile?.role === 'sales_manager' || profile?.role === 'admin') && pendingQuotations.length > 0 && (
+      {(profile?.role === 'manager' || profile?.role === 'admin') && pendingQuotations.length > 0 && (
         <div className="card mt-24">
           <div className="card-header">
             <h3 className="card-title">
