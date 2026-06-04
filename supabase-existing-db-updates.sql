@@ -105,6 +105,30 @@ ON CONFLICT (name) DO NOTHING;
 
 ALTER TABLE quotations ADD COLUMN IF NOT EXISTS service_id UUID REFERENCES services(id);
 
+-- ==============================================
+-- تحديث حالات عروض الأسعار لتطابق Workflow الحالي في التطبيق
+-- ==============================================
+ALTER TABLE quotations DROP CONSTRAINT IF EXISTS quotations_status_check;
+
+ALTER TABLE quotations ADD CONSTRAINT quotations_status_check
+  CHECK (status IN (
+    'draft',
+    'pending',
+    'accepted',
+    'rejected',
+    'pending_manager',
+    'manager_approved',
+    'manager_rejected',
+    'sent',
+    'client_negotiating',
+    'client_accepted',
+    'client_rejected',
+    'final_approved',
+    'final_rejected'
+  ));
+
+ALTER TABLE quotations ALTER COLUMN status SET DEFAULT 'pending_manager';
+
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;
 
 DO $$
