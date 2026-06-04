@@ -92,6 +92,25 @@ export default function Layout({ children, cityFilter, setCityFilter }) {
     }
   }, [profile]);
 
+  // Request Notification permission when user enables sounds (or on load if enabled)
+  useEffect(() => {
+    if (!profile) return;
+    if (!('Notification' in window)) return;
+    if (!soundEnabled) return;
+    if (Notification.permission === 'default') {
+      // Try to request permission; browsers may block if no user gesture
+      try {
+        Notification.requestPermission().then(permission => {
+          // no-op; permission state will be used when showing notifications
+          // store preference in profile if granted
+          if (permission === 'granted') {
+            // nothing else needed
+          }
+        }).catch(() => {});
+      } catch (e) {}
+    }
+  }, [profile, soundEnabled]);
+
   async function fetchNotificationCount() {
     try {
       const { count } = await supabase
@@ -113,16 +132,42 @@ export default function Layout({ children, cityFilter, setCityFilter }) {
           if (data && data.length) {
             const unseen = data.filter(n => new Date(n.created_at) > new Date(lastNotifCheckAt));
             unseen.reverse().forEach(n => {
-              if (!soundEnabled) return;
-              const soundKey = n.type || 'info';
+              // play sound if enabled
+              if (soundEnabled) {
+                const soundKey = n.type || 'info';
+                try {
+                  const audio = audioCacheRef.current[soundKey] || audioCacheRef.current['info'];
+                  if (audio) {
+                    audio.currentTime = 0;
+                    audio.play().catch(() => {});
+                  }
+                } catch (e) {
+                  console.error('play sound error', e);
+                }
+              }
+
+              // show system/browser notification if permission granted
               try {
-                const audio = audioCacheRef.current[soundKey] || audioCacheRef.current['info'];
-                if (audio) {
-                  audio.currentTime = 0;
-                  audio.play().catch(() => {});
+                if ('Notification' in window && Notification.permission === 'granted') {
+                  const notif = new Notification(n.title || 'إشعار جديد', {
+                    body: n.message || '',
+                    icon: '/logo-transparent.png',
+                    tag: `notif-${n.id}`,
+                    data: { link: n.link }
+                  });
+                  notif.onclick = function (ev) {
+                    ev.preventDefault();
+                    try {
+                      window.focus();
+                      if (n.link) {
+                        window.location.href = n.link;
+                      }
+                    } catch (e) {}
+                    this.close();
+                  };
                 }
               } catch (e) {
-                console.error('play sound error', e);
+                console.error('show system notification error', e);
               }
             });
           }
