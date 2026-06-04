@@ -994,13 +994,12 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                       </span>
                       {parseQuotationNotes(q.notes).client_response && (() => {
                         const decision = parseQuotationNotes(q.notes).client_response.decision;
-                        const cls = decision === 'accepted' ? 'badge-success' : decision === 'rejected' ? 'badge-danger' : 'badge-warning';
                         return (
-                          <span className={`badge ${cls}`} title={`رد العميل: ${decision}`}>
-                            {decision === 'accepted' && <Check size={16} className="text-success" />}
-                            {decision === 'rejected' && <X size={16} className="text-danger" />}
-                            {decision === 'negotiating' && <MessageCircle size={16} className="text-warning" />}
-                          </span>
+                          <div title={`رد العميل: ${decision}`}>
+                            {decision === 'accepted' && <Check size={20} className="text-success" />}
+                            {decision === 'rejected' && <X size={20} className="text-danger" />}
+                            {decision === 'negotiating' && <MessageCircle size={20} className="text-warning" />}
+                          </div>
                         );
                       })()}
                       {(parseQuotationNotes(q.notes).manager_response?.note || parseQuotationNotes(q.notes).manager_rejection?.note) && (
