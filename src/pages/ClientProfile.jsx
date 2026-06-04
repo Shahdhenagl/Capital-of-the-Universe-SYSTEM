@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowRight, Phone, Mail, MapPin, Building2, MessageCircle, Navigation, Printer, Plus, DollarSign, FileText, Calendar, Edit, Trash2, X } from 'lucide-react';
 import { supabase, formatCurrency, formatDate, CITIES, QUOTATION_STATUS, PAYMENT_METHODS, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { notifyIntegrations, openGoogleMaps, openWhatsApp } from '../lib/integrations';
