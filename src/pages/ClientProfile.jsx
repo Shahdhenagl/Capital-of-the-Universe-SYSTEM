@@ -391,6 +391,8 @@ function ClientProfile() {
       responsible_name: '',
       responsible_phone: '',
       elevator_codes: [''],
+      commercial_record: '',
+      tax_number: '',
       notes: ''
     };
   }
@@ -443,6 +445,8 @@ function ClientProfile() {
       responsible_name: site.responsible_name || '',
       responsible_phone: site.responsible_phone || '',
       elevator_codes: elevatorCodes.length ? elevatorCodes : [''],
+      commercial_record: site.commercial_record || '',
+      tax_number: site.tax_number || '',
       notes: site.notes || ''
     });
     setShowSiteModal(true);
@@ -471,6 +475,8 @@ function ClientProfile() {
         responsible_name: siteForm.responsible_name || null,
         responsible_phone: siteForm.responsible_phone || null,
         elevator_codes: (siteForm.elevator_codes || []).map(code => String(code).trim()).filter(Boolean),
+        commercial_record: siteForm.commercial_record || null,
+        tax_number: siteForm.tax_number || null,
         notes: siteForm.notes || null
       };
 
@@ -1297,6 +1303,18 @@ function ClientProfile() {
                             </p>
                           </div>
                         </div>
+                        {(site.commercial_record || site.tax_number) && (
+                          <div className="form-row-3 mt-16">
+                            <div>
+                              <span className="form-label">السجل التجاري</span>
+                              <p className="font-bold">{site.commercial_record || '-'}</p>
+                            </div>
+                            <div>
+                              <span className="form-label">البطاقة الضريبية</span>
+                              <p className="font-bold">{site.tax_number || '-'}</p>
+                            </div>
+                          </div>
+                        )}
                         {elevatorCodes.length > 0 && (
                           <div className="mt-16">
                             <span className="form-label">أكواد المصاعد</span>
@@ -1976,6 +1994,27 @@ function ClientProfile() {
                       value={siteForm.elevator_type}
                       onChange={(e) => handleSiteFormChange('elevator_type', e.target.value)}
                       placeholder="مثال: ركاب / بضائع"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label className="form-label">السجل التجاري (اختياري)</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={siteForm.commercial_record}
+                      onChange={(e) => handleSiteFormChange('commercial_record', e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">البطاقة الضريبية (اختياري)</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={siteForm.tax_number}
+                      onChange={(e) => handleSiteFormChange('tax_number', e.target.value)}
                     />
                   </div>
                 </div>
