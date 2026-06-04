@@ -1102,16 +1102,17 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                       )}
 
                       {(isAdmin || profile?.role === 'sales_rep') && q.status === 'sent' && (
-                        <div className="dropdown">
-                          <button className="btn btn-ghost btn-sm" title="رد العميل">
-                            <MessageCircle size={16} className="text-info" />
+                        <>
+                          <button className="btn btn-ghost btn-sm" onClick={() => handleStatusChange(q, 'client_negotiating')} title="العميل تفاوض">
+                            <MessageCircle size={18} className="text-warning" />
                           </button>
-                          <div className="dropdown-content">
-                            <button onClick={() => handleStatusChange(q, 'client_accepted')} title="العميل موافق"><Check size={16} className="text-success" /></button>
-                            <button onClick={() => handleStatusChange(q, 'client_negotiating')} title="العميل تفاوض"><MessageCircle size={16} className="text-warning" /></button>
-                            <button onClick={() => handleStatusChange(q, 'client_rejected')} title="العميل رافض"><X size={16} className="text-danger" /></button>
-                          </div>
-                        </div>
+                          <button className="btn btn-ghost btn-sm" onClick={() => handleStatusChange(q, 'client_rejected')} title="العميل رافض">
+                            <X size={18} className="text-danger" />
+                          </button>
+                          <button className="btn btn-ghost btn-sm" onClick={() => handleStatusChange(q, 'client_accepted')} title="العميل موافق">
+                            <Check size={18} className="text-success" />
+                          </button>
+                        </>
                       )}
                       
                       {/* Legacy actions support */}
