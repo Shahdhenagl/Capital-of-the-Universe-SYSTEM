@@ -136,154 +136,161 @@ export default function InstallationPhases() {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">مراحل التركيب</h1>
-          <p className="mt-1 text-sm text-gray-500">متابعة سير أعمال التركيبات والمطالبات المالية المرتبطة بها</p>
+    <div>
+      <div className="page-header">
+        <h1 className="page-title">
+          <span className="title-icon" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>
+            <Clock size={24} />
+          </span>
+          مراحل التركيب
+        </h1>
+        <div className="page-actions">
+          <button onClick={fetchPhases} className="btn btn-secondary">
+            <RefreshCw size={18} />
+            تحديث
+          </button>
         </div>
-        <button onClick={fetchPhases} className="btn btn-secondary">
-          تحديث <RefreshCw className="w-4 h-4 mr-2" /> {/* Assuming RefreshCw import, wait I didn't import it, let's just use text */}
-        </button>
       </div>
 
-      <div className="card">
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="flex-1 relative">
-            <Search className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="ابحث برقم العقد، اسم العميل، المرحلة..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input pr-10"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Filter className="w-5 h-5 text-gray-400" />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="input"
-            >
-              <option value="all">جميع الحالات</option>
-              <option value="pending">معلقة</option>
-              <option value="in_progress">جاري التنفيذ</option>
-              <option value="completed">مكتملة</option>
-            </select>
-          </div>
-          {profile?.role === 'admin' && (
+      <div className="filter-bar">
+        <div className="filter-group">
+          <Filter size={18} />
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="form-select"
+          >
+            <option value="all">جميع الحالات</option>
+            <option value="pending">معلقة</option>
+            <option value="in_progress">جاري التنفيذ</option>
+            <option value="completed">مكتملة</option>
+          </select>
+        </div>
+        {profile?.role === 'admin' && (
+          <div className="filter-group">
             <select
               value={filterBranch}
               onChange={(e) => setFilterBranch(e.target.value)}
-              className="input md:w-48"
+              className="form-select"
             >
               <option value="all">جميع الفروع</option>
               {Object.entries(CITIES).map(([key, value]) => (
                 <option key={key} value={key}>{value}</option>
               ))}
             </select>
-          )}
+          </div>
+        )}
+        <div className="filter-group search-wrapper">
+          <Search size={18} className="search-icon" />
+          <input
+            type="text"
+            placeholder="ابحث برقم العقد، اسم العميل..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="form-input search-input"
+          />
         </div>
+      </div>
 
+      <div className="table-container">
         {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-r-transparent"></div>
-            <p className="mt-2 text-gray-500">جاري تحميل المراحل...</p>
+          <div className="loading-inline">
+            <div className="loader"></div>
           </div>
         ) : error ? (
-          <div className="text-center py-12 text-red-600">
-            <AlertCircle className="w-12 h-12 mx-auto mb-3" />
-            <p>{error}</p>
+          <div className="error-message">
+            <AlertCircle size={24} />
+            <span>{error}</span>
           </div>
         ) : filteredPhases.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <Clock className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-            <p>لا توجد مراحل تركيب مطابقة للبحث</p>
+          <div className="empty-state">
+            <Clock size={64} />
+            <h3>لا توجد مراحل</h3>
+            <p>لا توجد مراحل تركيب مطابقة للبحث.</p>
           </div>
         ) : (
-          <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>رقم العقد / العميل</th>
-                  <th>رقم المرحلة / الوصف</th>
-                  <th>الفرع</th>
-                  <th>الجدولة الزمنية</th>
-                  <th>حالة التحصيل</th>
-                  <th>حالة المرحلة</th>
-                  <th>الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPhases.map((phase) => {
-                  const delayed = isDelayed(phase);
-                  return (
-                    <tr key={phase.id} className={delayed ? 'bg-red-50' : ''}>
-                      <td>
-                        <div className="font-bold">{phase.contracts?.contract_number}</div>
-                        <div className="text-sm text-gray-500">{phase.clients?.name}</div>
-                      </td>
-                      <td>
-                        <div className="font-bold">المرحلة {phase.phase_number}</div>
-                        <div className="text-sm">{phase.phase_name}</div>
-                      </td>
-                      <td>
-                        <span className="badge bg-gray-100 text-gray-800">
-                          {CITIES[phase.branch]}
-                        </span>
-                      </td>
-                      <td>
-                        <div className={`text-sm ${delayed ? 'text-red-600 font-bold' : ''}`}>
-                          <Calendar className="w-4 h-4 inline ml-1" />
-                          {formatDate(phase.scheduled_date)}
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>رقم العقد / العميل</th>
+                <th>رقم المرحلة / الوصف</th>
+                <th>الفرع</th>
+                <th>الجدولة الزمنية</th>
+                <th>حالة التحصيل</th>
+                <th>حالة المرحلة</th>
+                <th>الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPhases.map((phase) => {
+                const delayed = isDelayed(phase);
+                return (
+                  <tr key={phase.id} style={{ backgroundColor: delayed ? 'var(--danger-bg)' : 'transparent' }}>
+                    <td>
+                      <div className="font-bold">{phase.contracts?.contract_number}</div>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{phase.clients?.name}</div>
+                    </td>
+                    <td>
+                      <div className="font-bold">المرحلة {phase.phase_number}</div>
+                      <div style={{ fontSize: '0.875rem' }}>{phase.phase_name}</div>
+                    </td>
+                    <td>
+                      <span className="badge badge-secondary">
+                        {CITIES[phase.branch]}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ fontSize: '0.875rem', color: delayed ? 'var(--danger)' : 'inherit', fontWeight: delayed ? 'bold' : 'normal' }}>
+                        <Calendar size={14} style={{ display: 'inline', marginLeft: '4px' }} />
+                        {formatDate(phase.scheduled_date)}
+                      </div>
+                      {delayed && <div style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: '4px' }}>متأخرة!</div>}
+                    </td>
+                    <td>
+                      {phase.collection_schedule ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span className="font-bold">{formatCurrency(phase.collection_schedule.amount)}</span>
+                          {phase.collection_schedule.status === 'collected' ? (
+                            <span className="badge badge-success">مُحصلة</span>
+                          ) : (
+                            <span className="badge badge-danger">غير مُحصلة</span>
+                          )}
                         </div>
-                        {delayed && <div className="text-xs text-red-500 mt-1">متأخرة!</div>}
-                      </td>
-                      <td>
-                        {phase.collection_schedule ? (
-                          <div className="flex flex-col gap-1">
-                            <span className="text-sm font-bold">{formatCurrency(phase.collection_schedule.amount)}</span>
-                            {phase.collection_schedule.status === 'collected' ? (
-                              <span className="badge bg-success text-xs">مُحصلة</span>
-                            ) : (
-                              <span className="badge bg-danger text-xs">غير مُحصلة</span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-500">- غير مرتبطة -</span>
+                      ) : (
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>- غير مرتبطة -</span>
+                      )}
+                    </td>
+                    <td>{getStatusBadge(phase.status)}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {phase.status !== 'completed' && (
+                          <button
+                            onClick={() => handleMarkComplete(phase)}
+                            className="btn btn-primary"
+                            title="إكمال المرحلة"
+                          >
+                            <CheckCircle size={14} />
+                            إكمال
+                          </button>
                         )}
-                      </td>
-                      <td>{getStatusBadge(phase.status)}</td>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          {phase.status !== 'completed' && (
-                            <button
-                              onClick={() => handleMarkComplete(phase)}
-                              className="btn btn-primary text-sm py-1 px-3"
-                              title="إكمال المرحلة"
-                            >
-                              إكمال
-                            </button>
-                          )}
-                          
-                          {phase.collection_schedule && phase.collection_schedule.status !== 'collected' && (
-                            <button
-                              onClick={() => sendWhatsAppReminder(phase)}
-                              className="btn btn-secondary text-sm py-1 px-3 !bg-green-100 !text-green-700 hover:!bg-green-200 border-none flex items-center"
-                              title="تذكير واتساب"
-                            >
-                              <MessageCircle className="w-4 h-4 ml-1" /> واتساب
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        
+                        {phase.collection_schedule && phase.collection_schedule.status !== 'collected' && (
+                          <button
+                            onClick={() => sendWhatsAppReminder(phase)}
+                            className="btn btn-success"
+                            title="تذكير واتساب"
+                          >
+                            <MessageCircle size={14} />
+                            واتساب
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
       </div>
     </div>
