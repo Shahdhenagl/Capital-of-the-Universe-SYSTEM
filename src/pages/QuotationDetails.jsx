@@ -202,6 +202,25 @@ function QuotationDetails() {
 
       // Create contract
       const contractNumber = `CT-${Date.now().toString().slice(-8)}`;
+      const parsedQuotation = parseQuotationDescription(quotation.description);
+      const quotationDetails = parsedQuotation.details || {};
+      const contractNotes = JSON.stringify({
+        plainNotes: parsedQuotation.plainDescription || '',
+        details: {
+          contract_type: 'supply_installation',
+          links: {
+            client_site_id: quotationDetails.links?.client_site_id || null
+          },
+          contract: {
+            project_name: quotationDetails.project?.project_name || quotation.title || '',
+            project_location: quotationDetails.project?.project_location || ''
+          },
+          elevator: {
+            elevator_type: quotationDetails.elevator?.elevator_type || ''
+          }
+        },
+        attachments: []
+      });
       const { data: contractData, error: contractError } = await supabase
         .from('contracts')
         .insert({
@@ -217,6 +236,7 @@ function QuotationDetails() {
           end_date: contractForm.end_date,
           status: 'active',
           branch: quotation.branch,
+          notes: contractNotes,
           created_by: profile?.id
         })
         .select()

@@ -21,6 +21,7 @@ import {
 import { useAutocomplete } from '../contexts/AutocompleteContext';
 import SmartInput from '../components/SmartInput';
 import ClientSearchSelect from '../components/ClientSearchSelect';
+import ClientSiteSelect from '../components/ClientSiteSelect';
 import PrintHeader from '../components/PrintHeader';
 import PrintFooter from '../components/PrintFooter';
 import ContractPrintTemplate from '../components/ContractPrintTemplate';
@@ -407,8 +408,18 @@ function Contracts({ cityFilter = 'all' }) {
     : null;
   const clientSites = clientAddressSite ? [...savedClientSites, clientAddressSite] : savedClientSites;
 
+  function mergeSiteLists(currentSites, nextSites) {
+    const map = new Map(currentSites.map(site => [site.id, site]));
+    nextSites.forEach(site => map.set(site.id, site));
+    return Array.from(map.values());
+  }
+
   function handleClientSelect(client, clientSitesList) {
-    setClientSitesFromSearch(clientSitesList || []);
+    const nextSites = clientSitesList || [];
+    setClientSitesFromSearch(nextSites);
+    if (nextSites.length) {
+      setSites(prev => mergeSiteLists(prev, nextSites));
+    }
     // Add client to local list if not present
     if (!clients.find(c => c.id === client.id)) {
       setClients(prev => [client, ...prev]);
@@ -622,6 +633,46 @@ function Contracts({ cityFilter = 'all' }) {
       ...prev,
       payment_schedule: [...prev.payment_schedule, { label: `دفعة ${prev.payment_schedule.length + 1}`, description: '', percentage: '', amount: '', due_date: '' }]
     }));
+  }
+
+  function applySiteToForm(siteId, site) {
+    setForm(prev => {
+      const next = { ...prev, client_site_id: siteId };
+      next.branch = site?.city || next.branch;
+      next.details = {
+        ...next.details,
+        links: {
+          ...next.details.links,
+          client_site_id: siteId === CLIENT_ADDRESS_SITE_ID ? null : siteId,
+          uses_client_address: siteId === CLIENT_ADDRESS_SITE_ID
+        },
+        contract: {
+          ...next.details.contract,
+          project_name: site?.site_name || next.details.contract.project_name || '',
+          project_location: site?.address || next.details.contract.project_location || '',
+          facility_location: site?.address || next.details.contract.facility_location || '',
+          covered_elevators_count: site?.elevator_count || next.details.contract.covered_elevators_count || ''
+        },
+        elevator: {
+          ...next.details.elevator,
+          elevator_type: site?.elevator_type || next.details.elevator.elevator_type || ''
+        }
+      };
+      return next;
+    });
+  }
+
+  function handleClientSiteChange(siteId, site) {
+    if (site) {
+      applySiteToForm(siteId, site);
+      return;
+    }
+    updateForm('client_site_id', siteId);
+  }
+
+  function handleClientSitesChange(nextSites) {
+    setClientSitesFromSearch(nextSites);
+    setSites(prev => mergeSiteLists(prev, nextSites));
   }
 
   function updatePaymentRow(index, field, value) {
@@ -1279,14 +1330,14 @@ function Contracts({ cityFilter = 'all' }) {
                           required
                         />
                       </div>
-                      <div className="form-group">
-                        <label className="form-label">المشروع / موقع العميل</label>
-                        <select className="form-select" value={form.client_site_id} onChange={e => updateForm('client_site_id', e.target.value)}>
-                          <option value="">بدون ربط موقع</option>
-                          {clientSites.map(site => (
-                            <option key={site.id} value={site.id}>{site.site_name}</option>
-                          ))}
-                        </select>
+                      <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                        <ClientSiteSelect
+                          clientId={form.client_id}
+                          value={form.client_site_id}
+                          sites={clientSites}
+                          onChange={handleClientSiteChange}
+                          onSitesChange={handleClientSitesChange}
+                        />
                       </div>
                       <div className="form-group">
                         <label className="form-label">الفرع</label>

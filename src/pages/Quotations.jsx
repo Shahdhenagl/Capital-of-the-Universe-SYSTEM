@@ -6,6 +6,7 @@ import { FileText, Plus, Search, Send, Check, X, Eye, Filter, MessageCircle, Pri
 import { useAutocomplete } from '../contexts/AutocompleteContext';
 import SmartInput from '../components/SmartInput';
 import ClientSearchSelect from '../components/ClientSearchSelect';
+import ClientSiteSelect from '../components/ClientSiteSelect';
 import PrintHeader from '../components/PrintHeader';
 import PrintFooter from '../components/PrintFooter';
 
@@ -179,6 +180,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     client_id: '',
+    client_site_id: '',
     service_id: '',
     title: '',
     description: '',
@@ -187,6 +189,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
     branch: 'mecca',
     pdf_file: null
   });
+  const [clientSites, setClientSites] = useState([]);
 
   // Accept quotation → create contract sub-modal
   const [showContractModal, setShowContractModal] = useState(false);
@@ -271,6 +274,56 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
     setForm(prev => ({ ...prev, [field]: value }));
   }
 
+  function handleClientSelect(client, sites = []) {
+    if (!clients.find(c => c.id === client.id)) {
+      setClients(prev => [client, ...prev]);
+    }
+    setClientSites(sites || []);
+    setForm(prev => ({
+      ...prev,
+      client_id: client.id,
+      client_site_id: '',
+      branch: client.city || prev.branch
+    }));
+  }
+
+  function handleClientClear() {
+    setClientSites([]);
+    setForm(prev => ({
+      ...prev,
+      client_id: '',
+      client_site_id: ''
+    }));
+  }
+
+  function handleClientSitesChange(nextSites) {
+    setClientSites(nextSites || []);
+  }
+
+  function handleClientSiteChange(siteId, site) {
+    setForm(prev => ({
+      ...prev,
+      client_site_id: siteId,
+      branch: site?.city || prev.branch,
+      details: {
+        ...prev.details,
+        links: {
+          ...prev.details.links,
+          client_site_id: siteId || null
+        },
+        project: {
+          ...prev.details.project,
+          project_name: site?.site_name || prev.details.project?.project_name || '',
+          project_location: site?.address || prev.details.project?.project_location || ''
+        },
+        elevator: {
+          ...prev.details.elevator,
+          elevator_type: site?.elevator_type || prev.details.elevator?.elevator_type || ''
+        }
+      }
+    }));
+  }
+
   function handleDetailChange(section, field, value) {
     setForm(prev => {
       const details = {
@@ -302,6 +355,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
   function resetForm() {
     setForm({
       client_id: '',
+      client_site_id: '',
       service_id: '',
       title: '',
       description: '',
@@ -310,6 +364,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
       branch: 'mecca',
       pdf_file: null
     });
+    setClientSites([]);
   }
 
   function buildQuotationDescription() {
@@ -541,6 +596,25 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
 
       // Create contract
       const contractNumber = `CT-${Date.now().toString().slice(-8)}`;
+      const parsedQuotation = parseQuotationDescription(selectedQuotation.description);
+      const quotationDetails = parsedQuotation.details || {};
+      const contractNotes = JSON.stringify({
+        plainNotes: parsedQuotation.plainDescription || '',
+        details: {
+          contract_type: 'supply_installation',
+          links: {
+            client_site_id: quotationDetails.links?.client_site_id || null
+          },
+          contract: {
+            project_name: quotationDetails.project?.project_name || selectedQuotation.title || '',
+            project_location: quotationDetails.project?.project_location || ''
+          },
+          elevator: {
+            elevator_type: quotationDetails.elevator?.elevator_type || ''
+          }
+        },
+        attachments: []
+      });
       const { data: contractData, error: contractError } = await supabase
         .from('contracts')
         .insert({
@@ -556,6 +630,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
           end_date: contractForm.end_date,
           status: 'active',
           branch: selectedQuotation.branch,
+          notes: contractNotes,
           created_by: profile?.id
         })
         .select()
@@ -901,13 +976,8 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                     <label className="form-label">العميل *</label>
                     <ClientSearchSelect
                       value={form.client_id}
-                      onSelect={(client) => {
-                        if (!clients.find(c => c.id === client.id)) {
-                          setClients(prev => [client, ...prev]);
-                        }
-                        handleFormChange('client_id', client.id);
-                      }}
-                      onClear={() => handleFormChange('client_id', '')}
+                      onSelect={handleClientSelect}
+                      onClear={handleClientClear}
                       clients={clients}
                       required
                     />
@@ -925,6 +995,16 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                <div className="form-group">
+                  <ClientSiteSelect
+                    clientId={form.client_id}
+                    value={form.client_site_id}
+                    sites={clientSites}
+                    onChange={handleClientSiteChange}
+                    onSitesChange={handleClientSitesChange}
+                  />
                 </div>
 
                 <div className="form-group">

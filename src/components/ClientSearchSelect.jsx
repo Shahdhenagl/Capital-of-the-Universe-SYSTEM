@@ -32,7 +32,7 @@ export default function ClientSearchSelect({
 
   // New client form
   const [showNewForm, setShowNewForm] = useState(false);
-  const [newClient, setNewClient] = useState({ name: '', phone: '', email: '', address: '', city: 'mecca', contact_person: '' });
+  const [newClient, setNewClient] = useState({ name: '', phone: '', email: '', address: '', city: 'mecca', contact_person: '', notes: '' });
   const [phoneError, setPhoneError] = useState('');
   const [savingNew, setSavingNew] = useState(false);
 
@@ -189,7 +189,8 @@ export default function ClientSearchSelect({
       email: '',
       address: '',
       city: cityFilter && cityFilter !== 'all' ? cityFilter : 'mecca',
-      contact_person: ''
+      contact_person: '',
+      notes: ''
     });
     setPhoneError('');
   }
@@ -233,6 +234,7 @@ export default function ClientSearchSelect({
         address: newClient.address?.trim() || null,
         city: newClient.city || 'mecca',
         contact_person: newClient.contact_person?.trim() || null,
+        notes: newClient.notes?.trim() || null,
         status: 'active'
       };
 
@@ -623,6 +625,18 @@ export default function ClientSearchSelect({
                     value={newClient.contact_person}
                     onChange={e => setNewClient(p => ({ ...p, contact_person: e.target.value }))}
                     style={{ fontSize: '0.88rem' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>
+                    ملاحظات
+                  </label>
+                  <textarea
+                    className="form-textarea"
+                    value={newClient.notes}
+                    onChange={e => setNewClient(p => ({ ...p, notes: e.target.value }))}
+                    style={{ fontSize: '0.88rem', minHeight: '72px' }}
                   />
                 </div>
               </div>
