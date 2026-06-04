@@ -8,7 +8,8 @@ import {
   Filter,
   MessageCircle,
   Search,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 
 export default function InstallationPhases() {
