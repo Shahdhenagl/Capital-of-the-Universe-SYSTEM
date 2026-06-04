@@ -548,6 +548,63 @@ function QuotationDetails() {
             </div>
           )}
 
+          {/* Manager Response */}
+          {(parseQuotationNotes(quotation.notes).manager_response || parseQuotationNotes(quotation.notes).manager_rejection) && (
+            <div className="card mb-24">
+              <div className="card-header">
+                <h3 className="card-title">رد المدير</h3>
+              </div>
+              <div className="card-body">
+                {parseQuotationNotes(quotation.notes).manager_response && (() => {
+                  const response = parseQuotationNotes(quotation.notes).manager_response;
+                  return (
+                    <div className="form-row-3">
+                      <div>
+                        <span className="form-label">الحالة</span>
+                        <p className="font-bold text-success">موافق ✓</p>
+                      </div>
+                      <div>
+                        <span className="form-label">التاريخ</span>
+                        <p className="font-bold">{formatDate(response.date) || '-'}</p>
+                      </div>
+                      <div>
+                        <span className="form-label">الموظف</span>
+                        <p className="font-bold">{response.user || '-'}</p>
+                      </div>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <span className="form-label">الملاحظات</span>
+                        <p className="text-muted">{response.note || '-'}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+                {parseQuotationNotes(quotation.notes).manager_rejection && (() => {
+                  const rejection = parseQuotationNotes(quotation.notes).manager_rejection;
+                  return (
+                    <div className="form-row-3">
+                      <div>
+                        <span className="form-label">الحالة</span>
+                        <p className="font-bold text-danger">مرفوض ✕</p>
+                      </div>
+                      <div>
+                        <span className="form-label">التاريخ</span>
+                        <p className="font-bold">{formatDate(rejection.date) || '-'}</p>
+                      </div>
+                      <div>
+                        <span className="form-label">الموظف</span>
+                        <p className="font-bold">{rejection.user || '-'}</p>
+                      </div>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <span className="form-label">السبب</span>
+                        <p className="text-muted">{rejection.note || '-'}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
           {parseQuotationNotes(quotation.notes).client_response && (
             <div className="card mb-24">
               <div className="card-header">
