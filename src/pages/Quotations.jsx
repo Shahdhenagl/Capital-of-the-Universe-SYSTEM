@@ -994,11 +994,11 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                     {parseQuotationNotes(q.notes).client_response && (() => {
                       const decision = parseQuotationNotes(q.notes).client_response.decision;
                       return (
-                        <div style={{ display: 'inline', marginRight: '8px' }} title={`رد العميل: ${decision}`}>
-                          {decision === 'accepted' && <Check size={20} className="text-success" style={{ display: 'inline-block' }} />}
-                          {decision === 'rejected' && <X size={20} className="text-danger" style={{ display: 'inline-block' }} />}
-                          {decision === 'negotiating' && <MessageCircle size={20} className="text-warning" style={{ display: 'inline-block' }} />}
-                        </div>
+                        <span style={{ marginRight: '12px' }} title={`رد العميل: ${decision}`}>
+                          {decision === 'accepted' && <Check size={20} className="text-success" style={{ verticalAlign: 'middle' }} />}
+                          {decision === 'rejected' && <X size={20} className="text-danger" style={{ verticalAlign: 'middle' }} />}
+                          {decision === 'negotiating' && <MessageCircle size={20} className="text-warning" style={{ verticalAlign: 'middle' }} />}
+                        </span>
                       );
                     })()}
                     {(parseQuotationNotes(q.notes).manager_response?.note || parseQuotationNotes(q.notes).manager_rejection?.note) && (
