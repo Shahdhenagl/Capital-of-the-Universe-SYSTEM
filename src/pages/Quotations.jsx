@@ -1103,14 +1103,14 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
 
                       {(isAdmin || profile?.role === 'sales_rep') && q.status === 'sent' && (
                         <>
-                          <button className="btn btn-ghost btn-sm" onClick={() => handleStatusChange(q, 'client_negotiating')} title="العميل تفاوض">
-                            <MessageCircle size={18} className="text-warning" />
+                          <button className="btn btn-ghost btn-sm" onClick={() => handleStatusChange(q, 'client_accepted')} title="العميل موافق">
+                            <Check size={18} className="text-success" />
                           </button>
                           <button className="btn btn-ghost btn-sm" onClick={() => handleStatusChange(q, 'client_rejected')} title="العميل رافض">
                             <X size={18} className="text-danger" />
                           </button>
-                          <button className="btn btn-ghost btn-sm" onClick={() => handleStatusChange(q, 'client_accepted')} title="العميل موافق">
-                            <Check size={18} className="text-success" />
+                          <button className="btn btn-ghost btn-sm" onClick={() => handleStatusChange(q, 'client_negotiating')} title="العميل تفاوض">
+                            <MessageCircle size={18} className="text-warning" />
                           </button>
                         </>
                       )}
