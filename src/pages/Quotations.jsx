@@ -935,11 +935,16 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                       <span className={`badge ${getStatusBadgeClass(q.status)}`}>
                         {QUOTATION_STATUS[q.status] || q.status}
                       </span>
-                      {parseQuotationNotes(q.notes).client_response && (
-                        <span className="badge badge-info">
-                          رد العميل: {parseQuotationNotes(q.notes).client_response.decision === 'accepted' ? 'موافق' : parseQuotationNotes(q.notes).client_response.decision === 'rejected' ? 'رافض' : 'تفاوض'}
-                        </span>
-                      )}
+                      {parseQuotationNotes(q.notes).client_response && (() => {
+                        const decision = parseQuotationNotes(q.notes).client_response.decision;
+                        return (
+                          <span className={`badge ${decision === 'accepted' ? 'badge-success' : decision === 'rejected' ? 'badge-danger' : 'badge-warning'}`} title={`رد العميل: ${decision}`}>
+                            {decision === 'accepted' && <><Check size={14} className="text-success" />&nbsp;موافق</>}
+                            {decision === 'rejected' && <><X size={14} className="text-danger" />&nbsp;رافض</>}
+                            {decision === 'negotiating' && <><MessageCircle size={14} className="text-warning" />&nbsp;تفاوض</>}
+                          </span>
+                        );
+                      })()}
                       {(parseQuotationNotes(q.notes).manager_response?.note || parseQuotationNotes(q.notes).manager_rejection?.note) && (
                         <span className="badge badge-secondary" title={parseQuotationNotes(q.notes).manager_response?.note || parseQuotationNotes(q.notes).manager_rejection?.note}>
                           ملاحظة المدير
@@ -1047,9 +1052,9 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                             <MessageCircle size={16} className="text-info" />
                           </button>
                           <div className="dropdown-content">
-                            <button onClick={() => handleStatusChange(q, 'client_accepted')}>العميل موافق</button>
-                            <button onClick={() => handleStatusChange(q, 'client_negotiating')}>العميل يتفاوض</button>
-                            <button onClick={() => handleStatusChange(q, 'client_rejected')}>العميل رافض</button>
+                            <button onClick={() => handleStatusChange(q, 'client_accepted')} title="العميل موافق"><Check size={14} className="text-success" />&nbsp;موافق</button>
+                            <button onClick={() => handleStatusChange(q, 'client_negotiating')} title="العميل تفاوض"><MessageCircle size={14} className="text-warning" />&nbsp;يتفاوض</button>
+                            <button onClick={() => handleStatusChange(q, 'client_rejected')} title="العميل رافض"><X size={14} className="text-danger" />&nbsp;رافض</button>
                           </div>
                         </div>
                       )}
