@@ -45,6 +45,9 @@ export function AuthProvider({ children }) {
         setProfile(null);
         setLoading(false);
       }
+    }).catch(err => {
+      console.error("Error getting session (might be private mode):", err);
+      setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(

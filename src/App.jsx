@@ -95,15 +95,18 @@ function AppRoutes() {
 }
 
 import { AutocompleteProvider } from './contexts/AutocompleteContext';
+import ErrorBoundary from './components/ErrorBoundary';
 
 export default function App() {
   return (
-    <Router>
+    <ErrorBoundary>
+      <Router>
       <AuthProvider>
         <AutocompleteProvider>
           <AppRoutes />
         </AutocompleteProvider>
       </AuthProvider>
     </Router>
+    </ErrorBoundary>
   );
 }
