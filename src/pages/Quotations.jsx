@@ -592,6 +592,16 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
         `/quotations/${quotation.id}`
       );
 
+      // Play sound feedback for the local user depending on the new status
+      try {
+        if (newStatus.includes('accepted')) playNotificationSound('accept');
+        else if (newStatus.includes('rejected')) playNotificationSound('reject');
+        else if (newStatus.includes('negotiat')) playNotificationSound('negotiation');
+        else playNotificationSound('default');
+      } catch (e) {
+        // ignore audio errors
+      }
+
       fetchQuotations();
     } catch (err) {
       console.error('خطأ في تحديث الحالة:', err);
@@ -808,6 +818,53 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
     return map[status] || 'badge-secondary';
   }
 
+  // Play short notification sounds using Web Audio API.
+  function playNotificationSound(type = 'default') {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g);
+      g.connect(ctx.destination);
+
+      // Different frequencies / patterns for accept / reject / negotiating
+      if (type === 'accept') {
+        o.type = 'sine';
+        o.frequency.value = 880;
+        g.gain.setValueAtTime(0.0001, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
+        o.start();
+        setTimeout(() => { o.frequency.value = 1320; }, 120);
+        setTimeout(() => { g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35); o.stop(); ctx.close(); }, 350);
+      } else if (type === 'reject') {
+        o.type = 'square';
+        o.frequency.value = 220;
+        g.gain.setValueAtTime(0.0001, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.01);
+        o.start();
+        setTimeout(() => { g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25); o.stop(); ctx.close(); }, 250);
+      } else if (type === 'negotiation') {
+        o.type = 'sine';
+        o.frequency.value = 440;
+        g.gain.setValueAtTime(0.0001, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.01);
+        o.start();
+        setTimeout(() => { g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3); o.stop(); ctx.close(); }, 300);
+      } else {
+        // default short click
+        o.type = 'sine';
+        o.frequency.value = 600;
+        g.gain.setValueAtTime(0.0001, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.01);
+        o.start();
+        setTimeout(() => { g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18); o.stop(); ctx.close(); }, 180);
+      }
+    } catch (e) {
+      // AudioContext may be blocked; ignore silently
+      console.error('Audio play error', e);
+    }
+  }
+
   function getQuotationDetailRows(quotation) {
     const parsed = parseQuotationDescription(quotation.description);
     return QUOTATION_DETAIL_SECTIONS.flatMap(section =>
@@ -937,11 +994,12 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                       </span>
                       {parseQuotationNotes(q.notes).client_response && (() => {
                         const decision = parseQuotationNotes(q.notes).client_response.decision;
+                        const cls = decision === 'accepted' ? 'badge-success' : decision === 'rejected' ? 'badge-danger' : 'badge-warning';
                         return (
-                          <span className={`badge ${decision === 'accepted' ? 'badge-success' : decision === 'rejected' ? 'badge-danger' : 'badge-warning'}`} title={`رد العميل: ${decision}`}>
-                            {decision === 'accepted' && <><Check size={14} className="text-success" />&nbsp;موافق</>}
-                            {decision === 'rejected' && <><X size={14} className="text-danger" />&nbsp;رافض</>}
-                            {decision === 'negotiating' && <><MessageCircle size={14} className="text-warning" />&nbsp;تفاوض</>}
+                          <span className={`badge ${cls}`} title={`رد العميل: ${decision}`}>
+                            {decision === 'accepted' && <Check size={16} className="text-success" />}
+                            {decision === 'rejected' && <X size={16} className="text-danger" />}
+                            {decision === 'negotiating' && <MessageCircle size={16} className="text-warning" />}
                           </span>
                         );
                       })()}
@@ -1052,9 +1110,9 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                             <MessageCircle size={16} className="text-info" />
                           </button>
                           <div className="dropdown-content">
-                            <button onClick={() => handleStatusChange(q, 'client_accepted')} title="العميل موافق"><Check size={14} className="text-success" />&nbsp;موافق</button>
-                            <button onClick={() => handleStatusChange(q, 'client_negotiating')} title="العميل تفاوض"><MessageCircle size={14} className="text-warning" />&nbsp;يتفاوض</button>
-                            <button onClick={() => handleStatusChange(q, 'client_rejected')} title="العميل رافض"><X size={14} className="text-danger" />&nbsp;رافض</button>
+                            <button onClick={() => handleStatusChange(q, 'client_accepted')} title="العميل موافق"><Check size={16} className="text-success" /></button>
+                            <button onClick={() => handleStatusChange(q, 'client_negotiating')} title="العميل تفاوض"><MessageCircle size={16} className="text-warning" /></button>
+                            <button onClick={() => handleStatusChange(q, 'client_rejected')} title="العميل رافض"><X size={16} className="text-danger" /></button>
                           </div>
                         </div>
                       )}
