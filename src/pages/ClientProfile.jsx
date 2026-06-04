@@ -232,6 +232,22 @@ function ClientProfile() {
     }
   }
 
+  function parsePaymentNote(notes, fallbackLabel = 'دفعة') {
+    if (!notes) return { label: fallbackLabel, description: '' };
+    try {
+      const parsed = JSON.parse(notes);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          label: parsed.label || fallbackLabel,
+          description: parsed.description || ''
+        };
+      }
+    } catch {
+      // Legacy rows stored the payment label as plain text.
+    }
+    return { label: notes, description: '' };
+  }
+
   function isMaintenanceContract(contract) {
     const meta = parseContractNotes(contract.notes);
     return meta.details?.contract_type === 'maintenance' || (contract.service_type || '').includes('صيانة');
@@ -831,7 +847,7 @@ function ClientProfile() {
           collected_date: paymentForm.collected_date,
           payment_method: paymentForm.payment_method,
           status,
-          notes: paymentForm.notes || payingCollection.notes
+          notes: payingCollection.notes
         })
         .eq('id', payingCollection.id);
       if (updateError) throw updateError;
@@ -1412,9 +1428,14 @@ function ClientProfile() {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {activeMaintenance.payments.map(payment => (
+                                    {activeMaintenance.payments.map(payment => {
+                                      const paymentNote = parsePaymentNote(payment.notes, '-');
+                                      return (
                                       <tr key={payment.id}>
-                                        <td>{payment.notes || '-'}</td>
+                                        <td>
+                                          <strong>{paymentNote.label}</strong>
+                                          {paymentNote.description && <p className="text-muted mt-4" style={{ marginBottom: 0 }}>{paymentNote.description}</p>}
+                                        </td>
                                         <td>{formatDate(payment.due_date)}</td>
                                         <td>{formatCurrency(payment.amount)}</td>
                                         <td>{formatCurrency(payment.collected_amount || 0)}</td>
@@ -1424,7 +1445,8 @@ function ClientProfile() {
                                           </span>
                                         </td>
                                       </tr>
-                                    ))}
+                                      );
+                                    })}
                                   </tbody>
                                 </table>
                               </div>

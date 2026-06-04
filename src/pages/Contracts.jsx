@@ -79,7 +79,7 @@ const EMPTY_FORM = {
     links: {},
     alerts: {}
   },
-  payment_schedule: [{ label: 'الدفعة الأولى', percentage: 100, amount: '', due_date: '' }],
+  payment_schedule: [{ label: 'الدفعة الأولى', description: '', percentage: 100, amount: '', due_date: '' }],
   attachments: []
 };
 
@@ -252,6 +252,29 @@ function parseNotes(notes) {
 
 function isEnabledDetailValue(value) {
   return value === true || value === 'مشمول';
+}
+
+function buildPaymentNote(row) {
+  return JSON.stringify({
+    label: row.label || '',
+    description: row.description || ''
+  });
+}
+
+function parsePaymentNote(notes, fallbackLabel = 'دفعة') {
+  if (!notes) return { label: fallbackLabel, description: '' };
+  try {
+    const parsed = JSON.parse(notes);
+    if (parsed && typeof parsed === 'object') {
+      return {
+        label: parsed.label || fallbackLabel,
+        description: parsed.description || ''
+      };
+    }
+  } catch {
+    // Legacy rows stored the payment label as plain text.
+  }
+  return { label: notes, description: '' };
 }
 
 function Contracts({ cityFilter = 'all' }) {
@@ -466,13 +489,17 @@ function Contracts({ cityFilter = 'all' }) {
     next.details = { ...next.details, ...details };
     next.attachments = parsed.attachments || [];
     next.payment_schedule = (schedule.data || []).length
-      ? schedule.data.map((item, index) => ({
-        id: item.id,
-        label: item.notes || `دفعة ${index + 1}`,
-        percentage: '',
-        amount: item.amount || '',
-        due_date: item.due_date || ''
-      }))
+      ? schedule.data.map((item, index) => {
+        const paymentNote = parsePaymentNote(item.notes, `دفعة ${index + 1}`);
+        return {
+          id: item.id,
+          label: paymentNote.label,
+          description: paymentNote.description,
+          percentage: '',
+          amount: item.amount || '',
+          due_date: item.due_date || ''
+        };
+      })
       : next.payment_schedule;
 
     setForm(next);
@@ -593,7 +620,7 @@ function Contracts({ cityFilter = 'all' }) {
   function addPaymentRow() {
     setForm(prev => ({
       ...prev,
-      payment_schedule: [...prev.payment_schedule, { label: `دفعة ${prev.payment_schedule.length + 1}`, percentage: '', amount: '', due_date: '' }]
+      payment_schedule: [...prev.payment_schedule, { label: `دفعة ${prev.payment_schedule.length + 1}`, description: '', percentage: '', amount: '', due_date: '' }]
     }));
   }
 
@@ -708,7 +735,7 @@ function Contracts({ cityFilter = 'all' }) {
           due_date: row.due_date,
           amount: parseFloat(row.amount) || 0,
           status: 'pending',
-          notes: row.label || null,
+          notes: buildPaymentNote(row),
           branch: form.branch
         }));
         const { data: cols, error: scheduleError } = await supabase.from('collection_schedule').insert(scheduleRows).select();
@@ -907,10 +934,20 @@ function Contracts({ cityFilter = 'all' }) {
         .eq('contract_id', contract.id)
         .order('due_date', { ascending: true });
 
+      const printableSchedule = (scheduleRows || []).map((row, index) => {
+        const paymentNote = parsePaymentNote(row.notes, `دفعة ${index + 1}`);
+        return {
+          ...row,
+          label: paymentNote.label,
+          description: paymentNote.description,
+          percentage: contract.meta?.details?.financial?.payment_schedule?.[index]?.percentage || ''
+        };
+      });
+
       // Put them inside the contract object
       const contractWithSchedule = {
         ...contract,
-        payment_schedule: scheduleRows || []
+        payment_schedule: printableSchedule
       };
 
       setPrintContractItem(contractWithSchedule);
@@ -1120,6 +1157,7 @@ function Contracts({ cityFilter = 'all' }) {
                                 <thead>
                                   <tr>
                                     <th>الدفعة</th>
+                                    <th>وصف الدفعة</th>
                                     <th>تاريخ الاستحقاق</th>
                                     <th>المبلغ المستحق</th>
                                     <th>المبلغ المحصل</th>
@@ -1130,9 +1168,11 @@ function Contracts({ cityFilter = 'all' }) {
                                 <tbody>
                                   {scheduleData.map(item => {
                                     const remaining = (parseFloat(item.amount) || 0) - (parseFloat(item.collected_amount) || 0);
+                                    const paymentNote = parsePaymentNote(item.notes, '-');
                                     return (
                                       <tr key={item.id}>
-                                        <td>{item.notes || '-'}</td>
+                                        <td>{paymentNote.label}</td>
+                                        <td>{paymentNote.description || '-'}</td>
                                         <td>{formatDate(item.due_date)}</td>
                                         <td>{formatCurrency(item.amount)}</td>
                                         <td>{formatCurrency(item.collected_amount || 0)}</td>
@@ -1361,6 +1401,7 @@ function Contracts({ cityFilter = 'all' }) {
                       <thead>
                         <tr>
                           <th>اسم الدفعة</th>
+                          <th>وصف الدفعة</th>
                           <th>النسبة</th>
                           <th>المبلغ</th>
                           <th>تاريخ الاستحقاق</th>
@@ -1371,6 +1412,7 @@ function Contracts({ cityFilter = 'all' }) {
                         {form.payment_schedule.map((row, index) => (
                           <tr key={index}>
                             <td><input className="form-input" value={row.label} onChange={e => updatePaymentRow(index, 'label', e.target.value)} /></td>
+                            <td><input className="form-input" value={row.description || ''} onChange={e => updatePaymentRow(index, 'description', e.target.value)} placeholder="مثال: دفعة مقدمة عند توقيع العقد" /></td>
                             <td><input type="number" className="form-input" value={row.percentage} onChange={e => updatePaymentRow(index, 'percentage', e.target.value)} min="0" max="100" /></td>
                             <td><input type="number" className="form-input" value={row.amount} onChange={e => updatePaymentRow(index, 'amount', e.target.value)} min="0" step="0.01" /></td>
                             <td><input type="date" className="form-input" value={row.due_date} onChange={e => updatePaymentRow(index, 'due_date', e.target.value)} /></td>

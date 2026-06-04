@@ -6,6 +6,7 @@ export default function InstallPrintTemplate({ contract }) {
   const paymentSchedule = contract?.payment_schedule || [];
   
   const getField = (section, field) => details[section]?.[field] || '............';
+  const getPaymentDescription = (payment) => payment.description || '';
 
   return (
     <div className="print-only-container print-contract-multi-page install-contract" style={{ direction: 'rtl', fontFamily: 'Arial, sans-serif' }}>
@@ -104,7 +105,10 @@ export default function InstallPrintTemplate({ contract }) {
           {paymentSchedule.map((p, idx) => (
             <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ fontSize: '1.2rem' }}>•</span>
-              <span>دفعة مقدارها <span className="red-text">{p.percentage}%</span> {p.label} ، وقيمة الدفعة ( <span className="red-text">{formatCurrency(p.amount)}</span> ) .</span>
+              <span>
+                دفعة مقدارها <span className="red-text">{p.percentage}%</span> {p.label} ، وقيمة الدفعة ( <span className="red-text">{formatCurrency(p.amount)}</span> ) .
+                {getPaymentDescription(p) && <span style={{ display: 'block', marginRight: '18px', color: '#374151' }}>{getPaymentDescription(p)}</span>}
+              </span>
             </div>
           ))}
         </div>

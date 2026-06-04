@@ -4,6 +4,22 @@ import { useAuth } from '../contexts/AuthContext';
 import { Wallet, DollarSign, Calendar, AlertCircle, Check, Search, X, Filter, Download, MessageCircle, UploadCloud } from 'lucide-react';
 import { appendGoogleSheet, downloadCsv, notifyIntegrations, openWhatsApp, uploadDriveTextFile } from '../lib/integrations';
 
+function parsePaymentNote(notes, fallbackLabel = 'دفعة') {
+  if (!notes) return { label: fallbackLabel, description: '' };
+  try {
+    const parsed = JSON.parse(notes);
+    if (parsed && typeof parsed === 'object') {
+      return {
+        label: parsed.label || fallbackLabel,
+        description: parsed.description || ''
+      };
+    }
+  } catch {
+    // Legacy rows stored the payment label as plain text.
+  }
+  return { label: notes, description: '' };
+}
+
 function Collections({ cityFilter = 'all' }) {
   const { profile } = useAuth();
 
@@ -102,7 +118,9 @@ function Collections({ cityFilter = 'all' }) {
       const term = searchTerm.toLowerCase();
       const clientName = (s.clients?.name || '').toLowerCase();
       const contractNum = (s.contracts?.contract_number || '').toLowerCase();
-      if (!clientName.includes(term) && !contractNum.includes(term)) return false;
+      const paymentNote = parsePaymentNote(s.notes, '').label.toLowerCase();
+      const paymentDescription = parsePaymentNote(s.notes, '').description.toLowerCase();
+      if (!clientName.includes(term) && !contractNum.includes(term) && !paymentNote.includes(term) && !paymentDescription.includes(term)) return false;
     }
     return true;
   });
@@ -132,6 +150,8 @@ function Collections({ cityFilter = 'all' }) {
 
   function getExportRows() {
     return filteredSchedules.map(schedule => ({
+      payment: parsePaymentNote(schedule.notes, '').label,
+      payment_description: parsePaymentNote(schedule.notes, '').description,
       client: schedule.clients?.name || '',
       phone: schedule.clients?.phone || '',
       contract: schedule.contracts?.contract_number || '',
@@ -430,6 +450,7 @@ function Collections({ cityFilter = 'all' }) {
               <tr>
                 <th>العميل</th>
                 <th>رقم العقد</th>
+                <th>الدفعة</th>
                 <th>تاريخ الاستحقاق</th>
                 <th>المبلغ المستحق</th>
                 <th>المبلغ المحصل</th>
@@ -440,12 +461,17 @@ function Collections({ cityFilter = 'all' }) {
             <tbody>
               {filteredSchedules.map(schedule => {
                 const remaining = (parseFloat(schedule.amount) || 0) - (parseFloat(schedule.collected_amount) || 0);
+                const paymentNote = parsePaymentNote(schedule.notes, '-');
                 return (
                   <tr key={schedule.id} className={schedule.status === 'overdue' ? 'table-row-danger' : ''}>
                     <td>
                       <strong>{schedule.clients?.name || '-'}</strong>
                     </td>
                     <td>{schedule.contracts?.contract_number || '-'}</td>
+                    <td>
+                      <strong>{paymentNote.label}</strong>
+                      {paymentNote.description && <p className="text-muted mt-4" style={{ marginBottom: 0 }}>{paymentNote.description}</p>}
+                    </td>
                     <td>{formatDate(schedule.due_date)}</td>
                     <td>{formatCurrency(schedule.amount)}</td>
                     <td>{formatCurrency(schedule.collected_amount || 0)}</td>
