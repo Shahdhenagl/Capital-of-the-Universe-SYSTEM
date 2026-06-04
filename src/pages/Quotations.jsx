@@ -132,7 +132,7 @@ function getSafeStoragePath(folder, file, fallbackExtension = 'pdf') {
 }
 
 function Quotations({ cityFilter: globalCityFilter = 'all' }) {
-  const { profile, hasPermission } = useAuth();
+  const { profile, hasPermission, isAdmin } = useAuth();
   const { saveMemory } = useAutocomplete();
   const navigate = useNavigate();
 
