@@ -46,6 +46,7 @@ export default function Layout({ children, cityFilter, setCityFilter }) {
   const [notifications, setNotifications] = useState([]);
   const [lastNotifCheckAt, setLastNotifCheckAt] = useState(new Date().toISOString());
   const audioCacheRef = useRef({});
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   // Map notification types to free recorded sounds (Mixkit free assets)
   const SOUND_URLS = {
@@ -71,6 +72,8 @@ export default function Layout({ children, cityFilter, setCityFilter }) {
     if (profile) {
       fetchNotificationCount();
       preloadSounds();
+      // set sound enabled from profile or default to true
+      setSoundEnabled(profile.enable_sounds === undefined ? true : !!profile.enable_sounds);
       const interval = setInterval(fetchNotificationCount, 60000);
       
       // Run weekly collections check once on load/login
@@ -110,6 +113,7 @@ export default function Layout({ children, cityFilter, setCityFilter }) {
           if (data && data.length) {
             const unseen = data.filter(n => new Date(n.created_at) > new Date(lastNotifCheckAt));
             unseen.reverse().forEach(n => {
+              if (!soundEnabled) return;
               const soundKey = n.type || 'info';
               try {
                 const audio = audioCacheRef.current[soundKey] || audioCacheRef.current['info'];
@@ -301,12 +305,26 @@ export default function Layout({ children, cityFilter, setCityFilter }) {
                 <div className="notification-dropdown">
                   <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontWeight: 700 }}>الإشعارات</span>
-                    <button
-                      className="btn btn-sm btn-ghost"
-                      onClick={() => navigate('/notifications')}
-                    >
-                      عرض الكل
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <input type="checkbox" checked={soundEnabled} onChange={async (e) => {
+                          const next = !!e.target.checked;
+                          setSoundEnabled(next);
+                          try {
+                            await supabase.from('profiles').update({ enable_sounds: next }).eq('id', profile.id);
+                          } catch (err) {
+                            console.error('Failed to save sound preference', err);
+                          }
+                        }} />
+                        <span style={{ fontSize: 12 }}>أصوات الإشعارات</span>
+                      </label>
+                      <button
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => navigate('/notifications')}
+                      >
+                        عرض الكل
+                      </button>
+                    </div>
                   </div>
                   {notifications.length === 0 ? (
                     <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
