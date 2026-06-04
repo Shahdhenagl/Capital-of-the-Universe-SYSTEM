@@ -44,10 +44,33 @@ export default function Layout({ children, cityFilter, setCityFilter }) {
   const [notifCount, setNotifCount] = useState(0);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [lastNotifCheckAt, setLastNotifCheckAt] = useState(new Date().toISOString());
+  const audioCache = {};
+
+  // Map notification types to free public sounds
+  const SOUND_URLS = {
+    success: 'https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg',
+    danger: 'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg',
+    warning: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg',
+    info: 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg'
+  };
+
+  function preloadSounds() {
+    try {
+      Object.entries(SOUND_URLS).forEach(([key, url]) => {
+        const a = new Audio(url);
+        a.volume = 0.8;
+        audioCache[key] = a;
+      });
+    } catch (e) {
+      console.error('Failed to preload sounds', e);
+    }
+  }
 
   useEffect(() => {
     if (profile) {
       fetchNotificationCount();
+      preloadSounds();
       const interval = setInterval(fetchNotificationCount, 60000);
       
       // Run weekly collections check once on load/login
@@ -73,7 +96,39 @@ export default function Layout({ children, cityFilter, setCityFilter }) {
         .select('*', { count: 'exact', head: true })
         .eq('user_id', profile.id)
         .eq('is_read', false);
-      setNotifCount(count || 0);
+      const newCount = count || 0;
+      // If new unread notifications arrived since last check, fetch them and play sounds
+      if (newCount > (notifCount || 0)) {
+        try {
+          const { data } = await supabase
+            .from('notifications')
+            .select('*')
+            .eq('user_id', profile.id)
+            .eq('is_read', false)
+            .order('created_at', { ascending: false })
+            .limit(10);
+          if (data && data.length) {
+            const unseen = data.filter(n => new Date(n.created_at) > new Date(lastNotifCheckAt));
+            unseen.reverse().forEach(n => {
+              const soundKey = n.type || 'info';
+              try {
+                const audio = audioCache[soundKey] || audioCache['info'];
+                if (audio) {
+                  audio.currentTime = 0;
+                  audio.play().catch(() => {});
+                }
+              } catch (e) {
+                console.error('play sound error', e);
+              }
+            });
+          }
+        } catch (e) {
+          console.error('Error fetching new notifications for sound', e);
+        }
+      }
+
+      setNotifCount(newCount);
+      setLastNotifCheckAt(new Date().toISOString());
     } catch (err) {
       console.error(err);
     }
