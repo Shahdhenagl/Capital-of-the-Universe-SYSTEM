@@ -76,6 +76,8 @@ END $$;
 -- ==============================================
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '{}'::jsonb;
 
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS annual_leave_days INTEGER DEFAULT 0;
+
 ALTER TABLE client_sites ADD COLUMN IF NOT EXISTS floor_count INTEGER DEFAULT 0;
 ALTER TABLE client_sites ADD COLUMN IF NOT EXISTS responsible_name TEXT;
 ALTER TABLE client_sites ADD COLUMN IF NOT EXISTS responsible_phone TEXT;

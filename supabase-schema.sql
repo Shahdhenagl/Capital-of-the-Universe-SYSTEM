@@ -319,6 +319,7 @@ CREATE TABLE employees (
   position TEXT NOT NULL CHECK (position IN ('technician', 'admin', 'accountant', 'manager', 'other')),
   branch TEXT NOT NULL CHECK (branch IN ('mecca', 'jeddah')),
   salary NUMERIC(12,2),
+  annual_leave_days INTEGER DEFAULT 0,
   hire_date DATE DEFAULT CURRENT_DATE,
   status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
   notes TEXT,

@@ -150,7 +150,7 @@ function Employees({ cityFilter = 'all' }) {
       fetchEmployees();
     } catch (err) {
       console.error('Error saving employee:', err);
-      alert('حدث خطأ أثناء الحفظ');
+      alert(`حدث خطأ أثناء الحفظ: ${err.message || 'خطأ غير معروف'}`);
     } finally {
       setSaving(false);
     }
