@@ -1438,11 +1438,11 @@ function Contracts({ cityFilter = 'all' }) {
 
       {/* Print PDF Vector Document Section */}
       <div style={{ display: 'none' }}>
-        <div ref={printRef}>
-          {printData && printData.contract_type === 'supply_installation' ? (
-            <InstallPrintTemplate contract={printData} />
+        <div>
+          {printContractItem && printContractItem.contract_type === 'supply_installation' ? (
+            <InstallPrintTemplate contract={printContractItem} />
           ) : (
-            printData && <ContractPrintTemplate contract={printData} />
+            printContractItem && <ContractPrintTemplate contract={printContractItem} />
           )}
         </div>
       </div>
