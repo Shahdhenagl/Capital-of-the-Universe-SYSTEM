@@ -97,7 +97,8 @@ export default function ClientSiteSelect({
   }
 
   async function handleSaveSite(event) {
-    event.preventDefault();
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
     if (!clientId || !siteForm.site_name.trim()) return;
 
     setSaving(true);
@@ -179,7 +180,7 @@ export default function ClientSiteSelect({
               <X size={16} />
             </button>
           </div>
-          <form onSubmit={handleSaveSite}>
+          <div>
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">اسم المبنى / الموقع *</label>
@@ -260,11 +261,11 @@ export default function ClientSiteSelect({
 
             <div className="flex gap-8" style={{ justifyContent: 'flex-end' }}>
               <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>إلغاء</button>
-              <button type="submit" className="btn btn-primary" disabled={saving}>
+              <button type="button" className="btn btn-primary" onClick={handleSaveSite} disabled={saving}>
                 {saving ? 'جاري الحفظ...' : 'حفظ وربط المبنى'}
               </button>
             </div>
-          </form>
+          </div>
         </div>
       )}
     </div>

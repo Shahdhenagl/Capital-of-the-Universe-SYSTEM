@@ -216,7 +216,8 @@ export default function ClientSearchSelect({
   }
 
   async function handleSaveNewClient(e) {
-    e.preventDefault();
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
     if (!newClient.name.trim()) return;
 
     const phone = newClient.phone?.replace(/\D/g, '') || '';
@@ -505,7 +506,7 @@ export default function ClientSearchSelect({
 
           {/* New client form */}
           {showNewForm && (
-            <form onSubmit={handleSaveNewClient} style={{ padding: '16px' }}>
+            <div style={{ padding: '16px' }}>
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -650,8 +651,9 @@ export default function ClientSearchSelect({
                   إلغاء
                 </button>
                 <button
-                  type="submit"
+                  type="button"
                   className="btn btn-primary btn-sm"
+                  onClick={handleSaveNewClient}
                   disabled={savingNew || !!phoneError}
                 >
                   {savingNew ? (
@@ -661,7 +663,7 @@ export default function ClientSearchSelect({
                   )}
                 </button>
               </div>
-            </form>
+            </div>
           )}
         </div>
       )}
