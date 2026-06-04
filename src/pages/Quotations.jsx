@@ -988,26 +988,24 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                   <td>{q.title || '-'}</td>
                   <td>{formatCurrency(q.amount)}</td>
                   <td>
-                    <div className="flex gap-8" style={{ flexWrap: 'wrap' }}>
-                      <span className={`badge ${getStatusBadgeClass(q.status)}`}>
-                        {QUOTATION_STATUS[q.status] || q.status}
+                    <span className={`badge ${getStatusBadgeClass(q.status)}`}>
+                      {QUOTATION_STATUS[q.status] || q.status}
+                    </span>
+                    {parseQuotationNotes(q.notes).client_response && (() => {
+                      const decision = parseQuotationNotes(q.notes).client_response.decision;
+                      return (
+                        <div style={{ display: 'inline', marginRight: '8px' }} title={`رد العميل: ${decision}`}>
+                          {decision === 'accepted' && <Check size={20} className="text-success" style={{ display: 'inline-block' }} />}
+                          {decision === 'rejected' && <X size={20} className="text-danger" style={{ display: 'inline-block' }} />}
+                          {decision === 'negotiating' && <MessageCircle size={20} className="text-warning" style={{ display: 'inline-block' }} />}
+                        </div>
+                      );
+                    })()}
+                    {(parseQuotationNotes(q.notes).manager_response?.note || parseQuotationNotes(q.notes).manager_rejection?.note) && (
+                      <span className="badge badge-secondary" style={{ marginLeft: '8px' }} title={parseQuotationNotes(q.notes).manager_response?.note || parseQuotationNotes(q.notes).manager_rejection?.note}>
+                        ملاحظة المدير
                       </span>
-                      {parseQuotationNotes(q.notes).client_response && (() => {
-                        const decision = parseQuotationNotes(q.notes).client_response.decision;
-                        return (
-                          <div title={`رد العميل: ${decision}`}>
-                            {decision === 'accepted' && <Check size={20} className="text-success" />}
-                            {decision === 'rejected' && <X size={20} className="text-danger" />}
-                            {decision === 'negotiating' && <MessageCircle size={20} className="text-warning" />}
-                          </div>
-                        );
-                      })()}
-                      {(parseQuotationNotes(q.notes).manager_response?.note || parseQuotationNotes(q.notes).manager_rejection?.note) && (
-                        <span className="badge badge-secondary" title={parseQuotationNotes(q.notes).manager_response?.note || parseQuotationNotes(q.notes).manager_rejection?.note}>
-                          ملاحظة المدير
-                        </span>
-                      )}
-                    </div>
+                    )}
                   </td>
                   <td>{formatDate(q.created_at)}</td>
                   <td>
