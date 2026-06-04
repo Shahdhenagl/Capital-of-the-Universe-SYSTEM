@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -45,14 +45,14 @@ export default function Layout({ children, cityFilter, setCityFilter }) {
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [lastNotifCheckAt, setLastNotifCheckAt] = useState(new Date().toISOString());
-  const audioCache = {};
+  const audioCacheRef = useRef({});
 
-  // Map notification types to free public sounds
+  // Map notification types to free recorded sounds (Mixkit free assets)
   const SOUND_URLS = {
-    success: 'https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg',
-    danger: 'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg',
-    warning: 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg',
-    info: 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg'
+    success: 'https://assets.mixkit.co/sfx/preview/mixkit-positive-notification-951.mp3',
+    danger: 'https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3',
+    warning: 'https://assets.mixkit.co/sfx/preview/mixkit-alarm-tone-996.mp3',
+    info: 'https://assets.mixkit.co/sfx/preview/mixkit-notification-bell-quick-616.mp3'
   };
 
   function preloadSounds() {
@@ -60,7 +60,7 @@ export default function Layout({ children, cityFilter, setCityFilter }) {
       Object.entries(SOUND_URLS).forEach(([key, url]) => {
         const a = new Audio(url);
         a.volume = 0.8;
-        audioCache[key] = a;
+        audioCacheRef.current[key] = a;
       });
     } catch (e) {
       console.error('Failed to preload sounds', e);
@@ -112,7 +112,7 @@ export default function Layout({ children, cityFilter, setCityFilter }) {
             unseen.reverse().forEach(n => {
               const soundKey = n.type || 'info';
               try {
-                const audio = audioCache[soundKey] || audioCache['info'];
+                const audio = audioCacheRef.current[soundKey] || audioCacheRef.current['info'];
                 if (audio) {
                   audio.currentTime = 0;
                   audio.play().catch(() => {});
