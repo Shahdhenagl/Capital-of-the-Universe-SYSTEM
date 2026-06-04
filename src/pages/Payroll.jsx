@@ -19,6 +19,7 @@ function PayrollPage({ cityFilter }) {
   const [employees, setEmployees] = useState([]);
   const [advances, setAdvances] = useState([]);
   const [history, setHistory] = useState([]);
+  const [absences, setAbsences] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -39,9 +40,14 @@ function PayrollPage({ cityFilter }) {
   const [historyMonth, setHistoryMonth] = useState('');
   const [historyYear, setHistoryYear] = useState('');
 
+  // Absences filters
+  const [absenceMonth, setAbsenceMonth] = useState('');
+  const [absenceYear, setAbsenceYear] = useState('');
+
   // Modals state
   const [showAdvanceModal, setShowAdvanceModal] = useState(false);
   const [showDisburseModal, setShowDisburseModal] = useState(false);
+  const [showAbsenceModal, setShowAbsenceModal] = useState(false);
   
   // New Advance form state
   const [newAdvance, setNewAdvance] = useState({
@@ -49,6 +55,15 @@ function PayrollPage({ cityFilter }) {
     amount: '',
     advance_date: new Date().toISOString().split('T')[0],
     notes: ''
+  });
+
+  // New Absence form state
+  const [newAbsence, setNewAbsence] = useState({
+    employee_id: '',
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: new Date().toISOString().split('T')[0],
+    days_count: 1,
+    reason: ''
   });
 
   // Disburse Payroll state
@@ -75,6 +90,7 @@ function PayrollPage({ cityFilter }) {
         fetchEmployees(),
         fetchAdvances(),
         fetchHistory(),
+        fetchAbsences(),
         fetchCategories()
       ]);
     } catch (err) {
@@ -155,6 +171,24 @@ function PayrollPage({ cityFilter }) {
     }
   }
 
+  async function fetchAbsences() {
+    try {
+      let query = supabase
+        .from('employee_absences')
+        .select('*, employees(name, branch)');
+      
+      if (cityFilter && cityFilter !== 'all') {
+        query = query.eq('employees.branch', cityFilter);
+      }
+
+      const { data, error } = await query.order('start_date', { ascending: false });
+      if (error) throw error;
+      setAbsences(data || []);
+    } catch (err) {
+      console.error('Error fetching absences:', err);
+    }
+  }
+
   // Check if salary is already disbursed for this employee in selected month & year
   function isSalaryPaid(employeeId) {
     return history.some(h => 
@@ -215,13 +249,35 @@ function PayrollPage({ cityFilter }) {
       advancesDeducted = disburseData.advancesToDeduct.reduce((sum, adv) => sum + (parseFloat(adv.amount) || 0), 0);
     }
 
-    const net = base + allowance - deduction - advancesDeducted;
+    // Absence Deductions Logic
+    let absenceDeductionDays = 0;
+    let absenceDeductionAmount = 0;
+    if (disburseEmployee) {
+      const L = disburseEmployee.annual_leave_days || 0;
+      const yearAbsences = absences.filter(a => a.employee_id === disburseEmployee.id && new Date(a.start_date).getFullYear() === selectedYear);
+      
+      const prevAbsences = yearAbsences.filter(a => new Date(a.start_date).getMonth() + 1 < selectedMonth);
+      const A_prev = prevAbsences.reduce((sum, a) => sum + a.days_count, 0);
+      
+      const currAbsences = yearAbsences.filter(a => new Date(a.start_date).getMonth() + 1 === selectedMonth);
+      const A_curr = currAbsences.reduce((sum, a) => sum + a.days_count, 0);
+      
+      const E_prev = Math.max(0, A_prev - L);
+      const E_curr = Math.max(0, A_prev + A_curr - L);
+      
+      absenceDeductionDays = E_curr - E_prev;
+      absenceDeductionAmount = absenceDeductionDays * dayRate;
+    }
+
+    const net = base + allowance - deduction - advancesDeducted - absenceDeductionAmount;
 
     return {
       base,
       allowance,
       deduction,
       advancesDeducted,
+      absenceDeductionDays,
+      absenceDeductionAmount,
       net: net < 0 ? 0 : net
     };
   }
@@ -247,6 +303,8 @@ function PayrollPage({ cityFilter }) {
         allowance_days: disburseData.allowanceType === 'days' ? parseFloat(disburseData.allowanceValue) || 0 : 0,
         deductions: summary.deduction,
         deduction_days: disburseData.deductionType === 'days' ? parseFloat(disburseData.deductionValue) || 0 : 0,
+        absence_deduction_days: summary.absenceDeductionDays,
+        absence_deduction_amount: summary.absenceDeductionAmount,
         advances_deducted: summary.advancesDeducted,
         net_salary: summary.net,
         payment_method: disburseData.payment_method,
@@ -579,6 +637,55 @@ function PayrollPage({ cityFilter }) {
     }
   }
 
+  // Handle Absence Submission
+  async function handleAbsenceSubmit(e) {
+    e.preventDefault();
+    if (!newAbsence.employee_id || saving) return;
+
+    setSaving(true);
+    try {
+      const selectedEmp = employees.find(emp => emp.id === newAbsence.employee_id);
+      if (!selectedEmp) throw new Error('الموظف غير موجود');
+
+      const payload = {
+        employee_id: newAbsence.employee_id,
+        start_date: newAbsence.start_date,
+        end_date: newAbsence.end_date,
+        days_count: parseInt(newAbsence.days_count) || 1,
+        reason: newAbsence.reason,
+        created_by: profile?.id
+      };
+
+      const { error } = await supabase.from('employee_absences').insert(payload);
+      if (error) throw error;
+
+      await logActivity(
+        profile?.id,
+        profile?.full_name,
+        'تسجيل غياب',
+        'employee_absences',
+        null,
+        `تم تسجيل غياب للموظف ${selectedEmp.name} لمدة ${payload.days_count} أيام`,
+        selectedEmp.branch
+      );
+
+      setShowAbsenceModal(false);
+      setNewAbsence({
+        employee_id: '',
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: new Date().toISOString().split('T')[0],
+        days_count: 1,
+        reason: ''
+      });
+      await fetchInitialData();
+    } catch (err) {
+      console.error('Error saving absence:', err);
+      alert('حدث خطأ أثناء حفظ الغياب: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   // Filtered advances
   const filteredAdvances = advances.filter(adv => {
     if (advanceStatusFilter && adv.status !== advanceStatusFilter) return false;
@@ -600,6 +707,13 @@ function PayrollPage({ cityFilter }) {
       const empName = (h.employees?.name || '').toLowerCase();
       if (!empName.includes(term)) return false;
     }
+    return true;
+  });
+
+  // Filtered absences
+  const filteredAbsences = absences.filter(a => {
+    if (absenceMonth && new Date(a.start_date).getMonth() + 1 !== parseInt(absenceMonth)) return false;
+    if (absenceYear && new Date(a.start_date).getFullYear() !== parseInt(absenceYear)) return false;
     return true;
   });
 
@@ -660,6 +774,13 @@ function PayrollPage({ cityFilter }) {
         >
           <FileText size={16} style={{ marginLeft: '6px' }} />
           سجل الرواتب المصروفة
+        </button>
+        <button
+          className={`btn ${activeTab === 'absences' ? 'btn-primary' : 'btn-ghost'}`}
+          onClick={() => setActiveTab('absences')}
+        >
+          <Clock size={16} style={{ marginLeft: '6px' }} />
+          الغيابات والإجازات
         </button>
       </div>
 
@@ -998,6 +1119,89 @@ function PayrollPage({ cityFilter }) {
         </div>
       )}
 
+      {/* ======================= TAB 4: ABSENCES ======================= */}
+      {activeTab === 'absences' && (
+        <div>
+          <div className="filter-bar mb-24">
+            <div className="filter-group">
+              <label className="form-label" style={{ marginBottom: '4px', fontSize: '0.8rem' }}>الشهر</label>
+              <select
+                className="form-select"
+                value={absenceMonth}
+                onChange={e => setAbsenceMonth(e.target.value)}
+              >
+                <option value="">كل الأشهر</option>
+                {MONTHS_AR.map((m, idx) => (
+                  <option key={idx} value={idx + 1}>{m}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="filter-group">
+              <label className="form-label" style={{ marginBottom: '4px', fontSize: '0.8rem' }}>السنة</label>
+              <select
+                className="form-select"
+                value={absenceYear}
+                onChange={e => setAbsenceYear(e.target.value)}
+              >
+                <option value="">كل السنوات</option>
+                <option value={new Date().getFullYear() - 1}>{new Date().getFullYear() - 1}</option>
+                <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>
+                <option value={new Date().getFullYear() + 1}>{new Date().getFullYear() + 1}</option>
+              </select>
+            </div>
+            <div style={{ flex: 1 }}></div>
+            <div className="page-actions">
+              <button className="btn btn-primary" onClick={() => setShowAbsenceModal(true)}>
+                <Plus size={18} />
+                تسجيل غياب أو إجازة
+              </button>
+            </div>
+          </div>
+
+          <div className="table-container">
+            {filteredAbsences.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">🏖️</div>
+                <h3>لا يوجد سجلات غياب</h3>
+                <p>لم يتم تسجيل أي غياب للموظفين في هذه الفترة</p>
+              </div>
+            ) : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>تاريخ التسجيل</th>
+                    <th>اسم الموظف</th>
+                    <th>الفرع</th>
+                    <th>من تاريخ</th>
+                    <th>إلى تاريخ</th>
+                    <th>عدد الأيام</th>
+                    <th>السبب / ملاحظات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAbsences.map(abs => (
+                    <tr key={abs.id}>
+                      <td>{formatDate(abs.created_at)}</td>
+                      <td>
+                        <strong>{abs.employees?.name}</strong>
+                      </td>
+                      <td>{CITIES[abs.employees?.branch] || abs.employees?.branch}</td>
+                      <td>{formatDate(abs.start_date)}</td>
+                      <td>{formatDate(abs.end_date)}</td>
+                      <td>
+                        <span className="badge badge-danger">{abs.days_count} أيام</span>
+                      </td>
+                      <td>{abs.reason || 'بدون سبب'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ======================= MODAL: RECORD NEW ADVANCE ======================= */}
       {showAdvanceModal && (
         <div className="modal-overlay" onClick={() => setShowAdvanceModal(false)}>
@@ -1241,6 +1445,9 @@ function PayrollPage({ cityFilter }) {
                     <span>+ حوافز: {formatCurrency(getDisburseSummary().allowance)}</span>
                     <span>- خصم: {formatCurrency(getDisburseSummary().deduction)}</span>
                     <span>- سلف: {formatCurrency(getDisburseSummary().advancesDeducted)}</span>
+                    {getDisburseSummary().absenceDeductionAmount > 0 && (
+                      <span className="text-danger">- غياب: {formatCurrency(getDisburseSummary().absenceDeductionAmount)} ({getDisburseSummary().absenceDeductionDays} أيام)</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1250,6 +1457,123 @@ function PayrollPage({ cityFilter }) {
                   {saving ? 'جاري التسجيل والصرف المالي...' : 'اعتماد الصرف الفوري وإصدار السند'}
                 </button>
                 <button type="button" className="btn btn-secondary" onClick={() => setShowDisburseModal(false)}>
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================= MODAL: RECORD ABSENCE ======================= */}
+      {showAbsenceModal && (
+        <div className="modal-overlay" onClick={() => setShowAbsenceModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">تسجيل غياب أو إجازة للموظف</h2>
+              <button className="modal-close" onClick={() => setShowAbsenceModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleAbsenceSubmit}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">الموظف *</label>
+                  <select
+                    className="form-select"
+                    value={newAbsence.employee_id}
+                    onChange={e => {
+                      setNewAbsence({ ...newAbsence, employee_id: e.target.value });
+                    }}
+                    required
+                  >
+                    <option value="">اختر الموظف</option>
+                    {employees.map(emp => {
+                      // Calculate how many absence days they have so far this year
+                      const yearAbs = absences.filter(a => a.employee_id === emp.id && new Date(a.start_date).getFullYear() === new Date().getFullYear());
+                      const totalDays = yearAbs.reduce((s, a) => s + a.days_count, 0);
+                      const maxDays = emp.annual_leave_days || 0;
+                      return (
+                        <option key={emp.id} value={emp.id}>
+                          {emp.name} - (الرصيد: مسموح {maxDays} / استنفد {totalDays})
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">تاريخ البداية *</label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={newAbsence.start_date}
+                      onChange={e => {
+                        const start = e.target.value;
+                        const end = newAbsence.end_date;
+                        let days = 1;
+                        if (start && end) {
+                          const diff = (new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24);
+                          days = diff >= 0 ? diff + 1 : 1;
+                        }
+                        setNewAbsence({ ...newAbsence, start_date: start, days_count: days });
+                      }}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">تاريخ النهاية *</label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={newAbsence.end_date}
+                      onChange={e => {
+                        const end = e.target.value;
+                        const start = newAbsence.start_date;
+                        let days = 1;
+                        if (start && end) {
+                          const diff = (new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24);
+                          days = diff >= 0 ? diff + 1 : 1;
+                        }
+                        setNewAbsence({ ...newAbsence, end_date: end, days_count: days });
+                      }}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">عدد الأيام المحتسبة للغياب *</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={newAbsence.days_count}
+                    onChange={e => setNewAbsence({ ...newAbsence, days_count: e.target.value })}
+                    min="1"
+                    required
+                  />
+                  <small className="text-muted">يمكنك تعديل عدد الأيام إذا كانت هناك إجازات رسمية تتخلل هذه الفترة</small>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">ملاحظات / السبب</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={newAbsence.reason}
+                    onChange={e => setNewAbsence({ ...newAbsence, reason: e.target.value })}
+                    placeholder="مثال: ظرف صحي، غياب بدون عذر، إلخ..."
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? 'جاري الحفظ...' : 'حفظ الغياب'}
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowAbsenceModal(false)}>
                   إلغاء
                 </button>
               </div>

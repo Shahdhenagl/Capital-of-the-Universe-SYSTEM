@@ -23,6 +23,7 @@ function Employees({ cityFilter = 'all' }) {
     position: 'technician',
     branch: 'mecca',
     salary: '',
+    annual_leave_days: 0,
     hire_date: '',
     notes: ''
   });
@@ -87,6 +88,7 @@ function Employees({ cityFilter = 'all' }) {
       position: 'technician',
       branch: 'mecca',
       salary: '',
+      annual_leave_days: 0,
       hire_date: '',
       notes: ''
     });
@@ -102,6 +104,7 @@ function Employees({ cityFilter = 'all' }) {
       position: emp.position || 'technician',
       branch: emp.branch || 'mecca',
       salary: emp.salary || '',
+      annual_leave_days: emp.annual_leave_days || 0,
       hire_date: emp.hire_date || '',
       notes: emp.notes || ''
     });
@@ -123,6 +126,7 @@ function Employees({ cityFilter = 'all' }) {
         position: formData.position,
         branch: formData.branch,
         salary: parseFloat(formData.salary) || 0,
+        annual_leave_days: parseInt(formData.annual_leave_days) || 0,
         hire_date: formData.hire_date || null,
         notes: formData.notes
       };
@@ -293,6 +297,7 @@ function Employees({ cityFilter = 'all' }) {
                 <th>الهاتف</th>
                 <th>الوظيفة</th>
                 <th>الفرع</th>
+                <th>الإجازة السنوية</th>
                 <th>تاريخ التعيين</th>
                 <th>الحالة</th>
                 <th>إجراءات</th>
@@ -321,6 +326,11 @@ function Employees({ cityFilter = 'all' }) {
                     </span>
                   </td>
                   <td>{CITIES[emp.branch] || emp.branch}</td>
+                  <td>
+                    <span className="badge bg-gray-100 text-gray-800">
+                      {emp.annual_leave_days || 0} يوم
+                    </span>
+                  </td>
                   <td>{formatDate(emp.hire_date)}</td>
                   <td>
                     <div className="flex gap-8">
@@ -434,14 +444,26 @@ function Employees({ cityFilter = 'all' }) {
                     />
                   </div>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">تاريخ التعيين</label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={formData.hire_date}
-                    onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
-                  />
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">أيام الإجازة السنوية (بدون خصم)</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={formData.annual_leave_days}
+                      onChange={(e) => setFormData({ ...formData, annual_leave_days: e.target.value })}
+                      min="0"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">تاريخ التعيين</label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={formData.hire_date}
+                      onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
+                    />
+                  </div>
                 </div>
                 <div className="form-group">
                   <label className="form-label">ملاحظات</label>
