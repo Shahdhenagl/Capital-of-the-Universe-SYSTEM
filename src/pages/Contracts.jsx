@@ -68,7 +68,11 @@ const EMPTY_FORM = {
       shock_absorbers: true,
       fire_brake_device: true
     },
-    maintenance: {},
+    maintenance: {
+      preventive: true,
+      corrective: true,
+      emergency_247: true
+    },
     visits: {},
     sla: {},
     parts: {},
@@ -144,13 +148,13 @@ const INSTALL_SECTIONS = [
     key: 'safety',
     title: 'مواصفات الأمان',
     fields: [
-      ['limit_switch', 'قاطع نهاية المشوار'],
-      ['parachute', 'البراشوت'],
-      ['revision_device', 'جهاز الريفيزيون'],
-      ['oilers', 'المزايت'],
-      ['flexible_cable', 'الكابل المرن'],
-      ['shock_absorbers', 'مخفف الصدمات'],
-      ['fire_brake_device', 'جهاز الفرامل في حالة الحريق']
+      ['limit_switch', 'قاطع نهاية المشوار', 'checkbox'],
+      ['parachute', 'البراشوت', 'checkbox'],
+      ['revision_device', 'جهاز الريفيزيون', 'checkbox'],
+      ['oilers', 'المزايت', 'checkbox'],
+      ['flexible_cable', 'الكابل المرن', 'checkbox'],
+      ['shock_absorbers', 'مخفف الصدمات', 'checkbox'],
+      ['fire_brake_device', 'جهاز الفرامل في حالة الحريق', 'checkbox']
     ]
   }
 ];
@@ -192,9 +196,9 @@ const MAINTENANCE_SECTIONS = [
     key: 'maintenance',
     title: 'نوع الصيانة',
     fields: [
-      ['preventive', 'صيانة وقائية'],
-      ['corrective', 'صيانة تصحيحية'],
-      ['emergency_247', 'طوارئ 24/7']
+      ['preventive', 'صيانة وقائية', 'checkbox'],
+      ['corrective', 'صيانة تصحيحية', 'checkbox'],
+      ['emergency_247', 'طوارئ 24/7', 'checkbox']
     ]
   },
   {
@@ -244,6 +248,10 @@ function parseNotes(notes) {
   } catch {
     return { plainNotes: notes, details: {}, attachments: [] };
   }
+}
+
+function isEnabledDetailValue(value) {
+  return value === true || value === 'مشمول';
 }
 
 function Contracts({ cityFilter = 'all' }) {
@@ -1263,14 +1271,21 @@ function Contracts({ cityFilter = 'all' }) {
                           <div className="form-group" key={`${section.key}-${field}`}>
                             <label className="form-label">{label}</label>
                             {type === 'checkbox' ? (
-                              <div className="flex items-center gap-8 mt-8">
+                              <div className="boolean-switch-field">
                                 <input
+                                  id={`contract-${section.key}-${field}`}
+                                  className="boolean-switch-input"
                                   type="checkbox"
-                                  checked={form.details?.[section.key]?.[field] === true || form.details?.[section.key]?.[field] === 'مشمول'}
+                                  checked={isEnabledDetailValue(form.details?.[section.key]?.[field])}
                                   onChange={(e) => updateDetail(section.key, field, e.target.checked)}
-                                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                                 />
-                                <span>مشمول</span>
+                                <label className="boolean-switch" htmlFor={`contract-${section.key}-${field}`}>
+                                  <span className="boolean-switch-track">
+                                    <span className="boolean-switch-icon boolean-switch-icon-on">✓</span>
+                                    <span className="boolean-switch-icon boolean-switch-icon-off">✕</span>
+                                    <span className="boolean-switch-thumb"></span>
+                                  </span>
+                                </label>
                               </div>
                             ) : type === 'text' ? (
                               <SmartInput

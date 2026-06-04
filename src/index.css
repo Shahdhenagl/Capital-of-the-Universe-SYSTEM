@@ -1802,6 +1802,92 @@ a:hover {
   box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
 }
 
+.client-search-wrapper {
+  z-index: 1;
+}
+
+.client-search-wrapper.is-open {
+  z-index: 12000;
+}
+
+.form-group:has(.client-search-wrapper.is-open) {
+  position: relative;
+  z-index: 12000;
+}
+
+.boolean-switch-field {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 8px;
+}
+
+.boolean-switch-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.boolean-switch {
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.boolean-switch-track {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  width: 78px;
+  height: 38px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(239, 68, 68, 0.14);
+  transition: var(--transition-fast);
+}
+
+.boolean-switch-icon {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  height: 28px;
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.boolean-switch-icon-on {
+  color: var(--success);
+}
+
+.boolean-switch-icon-off {
+  color: var(--danger);
+}
+
+.boolean-switch-thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 34px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--danger);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+  transition: var(--transition-fast);
+}
+
+.boolean-switch-input:checked + .boolean-switch .boolean-switch-track {
+  border-color: var(--success);
+  background: rgba(16, 185, 129, 0.16);
+}
+
+.boolean-switch-input:checked + .boolean-switch .boolean-switch-thumb {
+  transform: translateX(36px);
+  background: var(--success);
+}
+
 /* Edit Pen Button styling */
 .btn-edit-icon {
   width: 32px !important;

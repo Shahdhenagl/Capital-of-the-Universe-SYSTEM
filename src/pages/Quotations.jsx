@@ -56,13 +56,13 @@ const QUOTATION_DETAIL_SECTIONS = [
     key: 'safety',
     title: 'السلامة والأنظمة',
     fields: [
-      ['ard', 'جهاز الإنقاذ التلقائي'],
-      ['door_sensor', 'حساس الباب'],
-      ['overload_sensor', 'حساس زيادة الوزن'],
-      ['speed_governor', 'حاكم السرعة'],
-      ['intercom', 'الإنتركم'],
-      ['emergency_light', 'إنارة الطوارئ'],
-      ['fire_mode', 'وضع الحريق']
+      ['ard', 'جهاز الإنقاذ التلقائي', 'checkbox'],
+      ['door_sensor', 'حساس الباب', 'checkbox'],
+      ['overload_sensor', 'حساس زيادة الوزن', 'checkbox'],
+      ['speed_governor', 'حاكم السرعة', 'checkbox'],
+      ['intercom', 'الإنتركم', 'checkbox'],
+      ['emergency_light', 'إنارة الطوارئ', 'checkbox'],
+      ['fire_mode', 'وضع الحريق', 'checkbox']
     ]
   },
   {
@@ -121,6 +121,21 @@ function parseQuotationNotes(notes) {
   } catch {
     return { plainNotes: notes };
   }
+}
+
+function hasDetailValue(value) {
+  return value !== undefined && value !== null && value !== '';
+}
+
+function isEnabledDetailValue(value) {
+  return value === true || value === 'مشمول';
+}
+
+function formatDetailValue(value) {
+  if (typeof value === 'boolean' || value === 'مشمول') {
+    return isEnabledDetailValue(value) ? '✓' : '✕';
+  }
+  return value;
 }
 
 function isMissingStorageBucket(error) {
@@ -629,7 +644,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
           label,
           value: parsed.details?.[section.key]?.[field]
         }))
-        .filter(row => row.value)
+        .filter(row => hasDetailValue(row.value))
     );
   }
 
@@ -935,14 +950,21 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                           <div className="form-group" key={`${section.key}-${field}`}>
                             <label className="form-label">{label}</label>
                             {type === 'checkbox' ? (
-                              <div className="flex items-center gap-8 mt-8">
+                              <div className="boolean-switch-field">
                                 <input
+                                  id={`quotation-${section.key}-${field}`}
+                                  className="boolean-switch-input"
                                   type="checkbox"
-                                  checked={form.details?.[section.key]?.[field] === true || form.details?.[section.key]?.[field] === 'مشمول'}
+                                  checked={isEnabledDetailValue(form.details?.[section.key]?.[field])}
                                   onChange={(e) => handleDetailChange(section.key, field, e.target.checked)}
-                                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                                 />
-                                <span>مشمول</span>
+                                <label className="boolean-switch" htmlFor={`quotation-${section.key}-${field}`}>
+                                  <span className="boolean-switch-track">
+                                    <span className="boolean-switch-icon boolean-switch-icon-on">✓</span>
+                                    <span className="boolean-switch-icon boolean-switch-icon-off">✕</span>
+                                    <span className="boolean-switch-thumb"></span>
+                                  </span>
+                                </label>
                               </div>
                             ) : type === 'text' ? (
                               <SmartInput
@@ -1174,7 +1196,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                   <tr key={`${row.section}-${row.label}-${index}`}>
                     <td>{row.section}</td>
                     <td>{row.label}</td>
-                    <td><strong>{row.value}</strong></td>
+                    <td><strong>{formatDetailValue(row.value)}</strong></td>
                   </tr>
                 ))}
               </tbody>

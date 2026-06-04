@@ -348,7 +348,11 @@ export default function ClientSearchSelect({
 
   // Search state
   return (
-    <div ref={wrapperRef} style={{ position: 'relative' }}>
+    <div
+      ref={wrapperRef}
+      className={`client-search-wrapper ${isOpen ? 'is-open' : ''}`}
+      style={{ position: 'relative' }}
+    >
       <div style={{ position: 'relative' }}>
         <Search
           size={18}
@@ -384,15 +388,16 @@ export default function ClientSearchSelect({
           top: '100%',
           right: 0,
           left: 0,
-          zIndex: 1000,
-          background: 'var(--card-bg)',
-          border: '1px solid var(--border)',
+          zIndex: 12000,
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--primary)',
           borderRadius: 'var(--radius-md)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+          boxShadow: '0 18px 50px rgba(0,0,0,0.55), 0 0 0 1px rgba(99,102,241,0.25)',
           marginTop: '4px',
           maxHeight: '380px',
           overflowY: 'auto',
-          overflowX: 'hidden'
+          overflowX: 'hidden',
+          isolation: 'isolate'
         }}>
           {/* Results list */}
           {!showNewForm && (

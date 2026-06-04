@@ -9,7 +9,7 @@ const DETAIL_SECTIONS = [
   { key: 'project', title: 'بيانات المشروع', fields: [['project_name', 'اسم المشروع'], ['project_location', 'موقع المشروع'], ['quotation_date', 'تاريخ العرض'], ['validity_period', 'مدة صلاحية العرض']] },
   { key: 'elevator', title: 'مواصفات المصعد', fields: [['elevator_type', 'نوع المصعد'], ['brand', 'الماركة'], ['capacity', 'الحمولة'], ['speed', 'السرعة'], ['stops', 'عدد الوقفات'], ['entrances', 'عدد المداخل'], ['drive_type', 'نوع التشغيل'], ['machine_type', 'نوع الماكينة'], ['control_type', 'نوع الكنترول'], ['shaft_dimensions', 'مقاس البئر'], ['cabin_dimensions', 'مقاس الكابينة'], ['door_dimensions', 'مقاس الأبواب'], ['travel_distance', 'مسافة الرحلة']] },
   { key: 'finishes', title: 'التشطيبات', fields: [['cabin_design', 'تصميم الكابينة'], ['cabin_finish', 'تشطيب الكابينة'], ['flooring', 'الأرضية'], ['ceiling', 'السقف'], ['doors_finish', 'تشطيب الأبواب'], ['operation_panels', 'لوحات التشغيل'], ['handrail_mirror', 'الدرابزين / المرآة']] },
-  { key: 'safety', title: 'السلامة والأنظمة', fields: [['ard', 'جهاز الإنقاذ التلقائي'], ['door_sensor', 'حساس الباب'], ['overload_sensor', 'حساس زيادة الوزن'], ['speed_governor', 'حاكم السرعة'], ['intercom', 'الإنتركم'], ['emergency_light', 'إنارة الطوارئ'], ['fire_mode', 'وضع الحريق']] },
+  { key: 'safety', title: 'السلامة والأنظمة', fields: [['ard', 'جهاز الإنقاذ التلقائي', 'checkbox'], ['door_sensor', 'حساس الباب', 'checkbox'], ['overload_sensor', 'حساس زيادة الوزن', 'checkbox'], ['speed_governor', 'حاكم السرعة', 'checkbox'], ['intercom', 'الإنتركم', 'checkbox'], ['emergency_light', 'إنارة الطوارئ', 'checkbox'], ['fire_mode', 'وضع الحريق', 'checkbox']] },
   { key: 'execution', title: 'التنفيذ والضمان', fields: [['supply_duration', 'مدة التوريد'], ['installation_duration', 'مدة التركيب'], ['warranty', 'الضمان'], ['maintenance_included', 'الصيانة المشمولة'], ['excluded_items', 'الأعمال غير المشمولة']] },
   { key: 'financial', title: 'الشروط المالية', fields: [['price_before_vat', 'السعر قبل الضريبة'], ['vat_amount', 'ضريبة القيمة المضافة'], ['payment_terms', 'شروط الدفع'], ['bank_details', 'بيانات التحويل']] }
 ];
@@ -34,12 +34,27 @@ function parseDescription(description) {
   }
 }
 
+function hasDetailValue(value) {
+  return value !== undefined && value !== null && value !== '';
+}
+
+function isEnabledDetailValue(value) {
+  return value === true || value === 'مشمول';
+}
+
+function formatDetailValue(value) {
+  if (typeof value === 'boolean' || value === 'مشمول') {
+    return isEnabledDetailValue(value) ? '✓' : '✕';
+  }
+  return value;
+}
+
 function detailRows(quotation) {
   const parsed = parseDescription(quotation?.description);
   return DETAIL_SECTIONS.flatMap(section =>
     section.fields
       .map(([field, label]) => ({ section: section.title, label, value: parsed.details?.[section.key]?.[field] }))
-      .filter(row => row.value)
+      .filter(row => hasDetailValue(row.value))
   );
 }
 
@@ -239,7 +254,7 @@ export default function PublicQuotation() {
                     <tr key={`${row.section}-${row.label}-${index}`}>
                       <td>{row.section}</td>
                       <td>{row.label}</td>
-                      <td><strong>{row.value}</strong></td>
+                      <td><strong>{formatDetailValue(row.value)}</strong></td>
                     </tr>
                   ))}
                 </tbody>
