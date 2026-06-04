@@ -209,6 +209,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
     end_date: ''
   });
   const [savingContract, setSavingContract] = useState(false);
+  const [sendAfterCreate, setSendAfterCreate] = useState(true);
 
   useEffect(() => {
     fetchQuotations();
@@ -511,6 +512,10 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
       resetForm();
       setShowAddModal(false);
       fetchQuotations();
+      // إذا قبل العميل، نوجه الموظف لإنشاء عقد جديد من صفحة العقود
+      if (newStatus === 'client_accepted' && (isAdmin || profile?.role === 'sales_rep' || profile?.role === 'manager')) {
+        navigate(`/contracts?new_from_quotation=${quotation.id}`);
+      }
       if (uploadWarning) alert(uploadWarning);
     } catch (err) {
       console.error('خطأ في إنشاء عرض السعر:', err);
@@ -732,6 +737,15 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
         'success',
         `/quotations/${selectedQuotation.id}`
       );
+
+      // Optionally send a WhatsApp notification to the client after contract creation
+      if (sendAfterCreate) {
+        try {
+          sendWhatsApp(selectedQuotation);
+        } catch (e) {
+          console.error('خطأ أثناء إرسال إشعار العميل:', e);
+        }
+      }
 
       setShowContractModal(false);
       setSelectedQuotation(null);
@@ -1307,6 +1321,13 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                       onChange={(e) => handleContractFormChange('end_date', e.target.value)}
                       required
                     />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">خيارات إضافية</label>
+                  <div className="form-checkbox">
+                    <input type="checkbox" id="sendAfterCreate" checked={sendAfterCreate} onChange={e => setSendAfterCreate(e.target.checked)} />
+                    <label htmlFor="sendAfterCreate">إرسال إشعار/واتساب للعميل بعد إنشاء العقد</label>
                   </div>
                 </div>
               </div>

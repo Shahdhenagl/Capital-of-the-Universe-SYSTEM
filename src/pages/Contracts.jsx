@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase, formatCurrency, formatDate, CITIES, PAYMENT_METHODS, PAYMENT_FREQUENCIES, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -281,6 +282,7 @@ function parsePaymentNote(notes, fallbackLabel = 'دفعة') {
 function Contracts({ cityFilter = 'all' }) {
   const { profile } = useAuth();
   const { saveMemory } = useAutocomplete();
+  const location = useLocation();
 
   const [contracts, setContracts] = useState([]);
   const [clients, setClients] = useState([]);
@@ -304,10 +306,42 @@ function Contracts({ cityFilter = 'all' }) {
   const [filterCity, setFilterCity] = useState(cityFilter === 'all' ? '' : cityFilter);
   const [filterType, setFilterType] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterFromQuotation, setFilterFromQuotation] = useState(false);
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  // If redirected from a quotation acceptance, open contract form prefilled
+  useEffect(() => {
+    const params = new URLSearchParams(location.search || '');
+    const qid = params.get('new_from_quotation');
+    if (!qid) return;
+    // wait until clients are loaded
+    if (!clients || clients.length === 0) return;
+
+    (async () => {
+      try {
+        const { data: quotation, error } = await supabase.from('quotations').select('*').eq('id', qid).single();
+        if (error || !quotation) return;
+
+        // Prepare a contract form prefilled from the quotation
+        resetForm('supply_installation');
+        setForm(prev => ({
+          ...prev,
+          client_id: quotation.client_id || prev.client_id,
+          title: quotation.title || prev.title,
+          total_amount: quotation.amount || prev.total_amount,
+          start_date: new Date().toISOString().split('T')[0],
+          end_date: ''
+        }));
+        setPlainNotes(prev => (quotation.description || prev));
+        setShowFormModal(true);
+      } catch (e) {
+        console.error('خطأ في جلب بيانات العرض لتعبئة نموذج العقد:', e);
+      }
+    })();
+  }, [location.search, clients]);
 
   useEffect(() => {
     setFilterCity(cityFilter === 'all' ? '' : cityFilter);
@@ -364,6 +398,7 @@ function Contracts({ cityFilter = 'all' }) {
   }), [contracts]);
 
   const activeContracts = enrichedContracts.filter(c => c.status === 'active').length;
+  const newFromQuotationCount = enrichedContracts.filter(c => c.quotation_id).length;
   const expiringSoon = enrichedContracts.filter(c => {
     if (!c.end_date || c.status !== 'active') return false;
     const days = Math.ceil((new Date(c.end_date) - new Date()) / 86400000);
@@ -377,6 +412,7 @@ function Contracts({ cityFilter = 'all' }) {
     if (filterStatus && c.status !== filterStatus) return false;
     if (filterCity && c.branch !== filterCity) return false;
     if (filterType && c.contract_type !== filterType) return false;
+    if (filterFromQuotation && !c.quotation_id) return false;
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       const haystack = [
@@ -1053,6 +1089,13 @@ function Contracts({ cityFilter = 'all' }) {
           <div className="stat-info">
             <div className="stat-label">عقود سارية</div>
             <div className="stat-value">{activeContracts}</div>
+          </div>
+        </div>
+
+        <div className={`stat-card info`} style={{ cursor: 'pointer' }} onClick={() => setFilterFromQuotation(prev => !prev)}>
+          <div className="stat-info">
+            <div className="stat-label">عقود جديدة (من عروض الأسعار)</div>
+            <div className="stat-value">{newFromQuotationCount}</div>
           </div>
         </div>
 
