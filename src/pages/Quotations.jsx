@@ -822,42 +822,88 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
   function playNotificationSound(type = 'default') {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.connect(g);
-      g.connect(ctx.destination);
+      const now = ctx.currentTime;
 
-      // Different frequencies / patterns for accept / reject / negotiating
       if (type === 'accept') {
-        o.type = 'sine';
-        o.frequency.value = 880;
-        g.gain.setValueAtTime(0.0001, ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
-        o.start();
-        setTimeout(() => { o.frequency.value = 1320; }, 120);
-        setTimeout(() => { g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35); o.stop(); ctx.close(); }, 350);
+        // Success Chime: Uplifting major arpeggio (C5, E5, G5, C6)
+        const playTone = (freq, startTime, duration, vol = 0.2) => {
+          const osc = ctx.createOscillator();
+          const gainNode = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          osc.connect(gainNode);
+          gainNode.connect(ctx.destination);
+          
+          gainNode.gain.setValueAtTime(0, startTime);
+          gainNode.gain.linearRampToValueAtTime(vol, startTime + 0.02);
+          gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+          
+          osc.start(startTime);
+          osc.stop(startTime + duration);
+        };
+        playTone(523.25, now, 0.2);       // C5
+        playTone(659.25, now + 0.1, 0.2); // E5
+        playTone(783.99, now + 0.2, 0.4); // G5
+        playTone(1046.50, now + 0.3, 0.6, 0.25); // C6
+        setTimeout(() => ctx.close(), 1000);
+        
       } else if (type === 'reject') {
-        o.type = 'square';
-        o.frequency.value = 220;
-        g.gain.setValueAtTime(0.0001, ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.01);
-        o.start();
-        setTimeout(() => { g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25); o.stop(); ctx.close(); }, 250);
+        // Error Buzz: Attention-grabbing dual-tone descending drop
+        const playBuzz = (freq1, freq2, startTime, duration) => {
+          const osc = ctx.createOscillator();
+          const gainNode = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.value = freq1;
+          osc.frequency.exponentialRampToValueAtTime(freq2, startTime + duration);
+          osc.connect(gainNode);
+          gainNode.connect(ctx.destination);
+          
+          gainNode.gain.setValueAtTime(0, startTime);
+          gainNode.gain.linearRampToValueAtTime(0.15, startTime + 0.02);
+          gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+          
+          osc.start(startTime);
+          osc.stop(startTime + duration);
+        };
+        playBuzz(300, 150, now, 0.3);
+        playBuzz(300, 150, now + 0.2, 0.4);
+        setTimeout(() => ctx.close(), 700);
+
       } else if (type === 'negotiation') {
-        o.type = 'sine';
-        o.frequency.value = 440;
-        g.gain.setValueAtTime(0.0001, ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.01);
-        o.start();
-        setTimeout(() => { g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3); o.stop(); ctx.close(); }, 300);
+        // Notification Ping: Double clear bell
+        const playPing = (freq, startTime, duration) => {
+          const osc = ctx.createOscillator();
+          const gainNode = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.value = freq;
+          osc.connect(gainNode);
+          gainNode.connect(ctx.destination);
+          
+          gainNode.gain.setValueAtTime(0, startTime);
+          gainNode.gain.linearRampToValueAtTime(0.25, startTime + 0.01);
+          gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+          
+          osc.start(startTime);
+          osc.stop(startTime + duration);
+        };
+        playPing(880, now, 0.3);      // A5
+        playPing(880, now + 0.15, 0.5); // A5 again
+        setTimeout(() => ctx.close(), 800);
+
       } else {
-        // default short click
-        o.type = 'sine';
-        o.frequency.value = 600;
-        g.gain.setValueAtTime(0.0001, ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.01);
-        o.start();
-        setTimeout(() => { g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18); o.stop(); ctx.close(); }, 180);
+        // Default short click
+        const osc = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 600;
+        osc.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        gainNode.gain.setValueAtTime(0, now);
+        gainNode.gain.linearRampToValueAtTime(0.1, now + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+        setTimeout(() => ctx.close(), 200);
       }
     } catch (e) {
       // AudioContext may be blocked; ignore silently
