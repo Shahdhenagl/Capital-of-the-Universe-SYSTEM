@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, formatCurrency, formatDate, CITIES } from '../lib/supabase';
 import {
@@ -20,6 +21,7 @@ const PIE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#8b5
 
 function Dashboard({ cityFilter }) {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalRevenue: 0,
@@ -477,10 +479,15 @@ function Dashboard({ cityFilter }) {
                   <div
                     key={col.id}
                     className="flex-between"
+                    onClick={() => col.client_id && navigate(`/clients/${col.client_id}`)}
                     style={{
                       padding: '12px 0',
-                      borderBottom: '1px solid var(--border)'
+                      borderBottom: '1px solid var(--border)',
+                      cursor: 'pointer',
+                      transition: 'opacity 0.2s'
                     }}
+                    onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+                    onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                   >
                     <div>
                       <div className="font-semibold" style={{ fontSize: '0.9rem' }}>
@@ -527,13 +534,18 @@ function Dashboard({ cityFilter }) {
                     <div
                       key={client.id}
                       className="flex-between"
+                      onClick={() => client.client_id && navigate(`/clients/${client.client_id}`)}
                       style={{
                         padding: '12px 16px',
                         marginBottom: '8px',
                         background: 'var(--danger-bg)',
                         borderRadius: 'var(--radius-md)',
-                        border: '1px solid rgba(239, 68, 68, 0.2)'
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        cursor: 'pointer',
+                        transition: 'opacity 0.2s'
                       }}
+                      onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+                      onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                     >
                       <div>
                         <div className="font-semibold" style={{ fontSize: '0.9rem' }}>
@@ -571,13 +583,18 @@ function Dashboard({ cityFilter }) {
                 <div
                   key={quote.id}
                   className="flex-between"
+                  onClick={() => navigate(`/quotations/${quote.id}`)}
                   style={{
                     padding: '12px 16px',
                     marginBottom: '8px',
                     background: 'var(--warning-bg)',
                     borderRadius: 'var(--radius-md)',
-                    border: '1px solid rgba(245, 158, 11, 0.2)'
+                    border: '1px solid rgba(245, 158, 11, 0.2)',
+                    cursor: 'pointer',
+                    transition: 'opacity 0.2s'
                   }}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                 >
                   <div>
                     <div className="font-semibold" style={{ fontSize: '0.9rem' }}>

@@ -87,7 +87,8 @@ function QuotationDetails() {
     payment_frequency: 'monthly',
     payment_method: 'cash',
     start_date: '',
-    end_date: ''
+    end_date: '',
+    note: ''
   });
 
   // Reject modal
@@ -192,18 +193,31 @@ function QuotationDetails() {
     try {
       setSavingContract(true);
 
-      // Update quotation status
+      // Update quotation status and save manager response note
+      const parsedQuotation = parseQuotationDescription(quotation.description);
+      const quotationDetails = parsedQuotation.details || {};
+      const updatedNotes = parseQuotationNotes(quotation.notes);
+      if (contractForm.note) {
+        updatedNotes.manager_response = {
+          status: 'manager_approved',
+          note: contractForm.note,
+          by: profile?.full_name || profile?.email || '',
+          date: new Date().toISOString()
+        };
+      }
+
       const { error: quotError } = await supabase
         .from('quotations')
-        .update({ status: 'accepted' })
+        .update({ 
+          status: 'accepted',
+          notes: Object.keys(updatedNotes).length ? JSON.stringify(updatedNotes) : quotation.notes
+        })
         .eq('id', id);
 
       if (quotError) throw quotError;
 
       // Create contract
       const contractNumber = `CT-${Date.now().toString().slice(-8)}`;
-      const parsedQuotation = parseQuotationDescription(quotation.description);
-      const quotationDetails = parsedQuotation.details || {};
       const contractNotes = JSON.stringify({
         plainNotes: parsedQuotation.plainDescription || '',
         details: {
@@ -296,11 +310,22 @@ function QuotationDetails() {
     try {
       setSavingReject(true);
 
+      const updatedNotes = parseQuotationNotes(quotation.notes);
+      if (rejectReason) {
+        updatedNotes.manager_rejection = {
+          status: 'manager_rejected',
+          note: rejectReason,
+          by: profile?.full_name || profile?.email || '',
+          date: new Date().toISOString()
+        };
+      }
+
       const { error } = await supabase
         .from('quotations')
         .update({
           status: 'rejected',
-          rejection_reason: rejectReason || null
+          rejection_reason: rejectReason || null,
+          notes: Object.keys(updatedNotes).length ? JSON.stringify(updatedNotes) : quotation.notes
         })
         .eq('id', id);
 
@@ -540,7 +565,7 @@ function QuotationDetails() {
 
           {/* Rejection Reason */}
           {quotation.status === 'rejected' && quotation.rejection_reason && (
-            <div className="card mb-24">
+            <div className="card mb-24 invoice-no-print">
               <div className="card-body">
                 <h3 className="font-semibold mb-16 text-danger">سبب الرفض</h3>
                 <p className="text-muted">{quotation.rejection_reason}</p>
@@ -550,7 +575,7 @@ function QuotationDetails() {
 
           {/* Manager Response */}
           {(parseQuotationNotes(quotation.notes).manager_response || parseQuotationNotes(quotation.notes).manager_rejection) && (
-            <div className="card mb-24">
+            <div className="card mb-24 invoice-no-print">
               <div className="card-header">
                 <h3 className="card-title">رد المدير</h3>
               </div>
@@ -569,7 +594,7 @@ function QuotationDetails() {
                       </div>
                       <div>
                         <span className="form-label">الموظف</span>
-                        <p className="font-bold">{response.user || '-'}</p>
+                        <p className="font-bold">{response.by || response.user || '-'}</p>
                       </div>
                       <div style={{ gridColumn: '1 / -1' }}>
                         <span className="form-label">الملاحظات</span>
@@ -592,7 +617,7 @@ function QuotationDetails() {
                       </div>
                       <div>
                         <span className="form-label">الموظف</span>
-                        <p className="font-bold">{rejection.user || '-'}</p>
+                        <p className="font-bold">{rejection.by || rejection.user || '-'}</p>
                       </div>
                       <div style={{ gridColumn: '1 / -1' }}>
                         <span className="form-label">السبب</span>
@@ -606,7 +631,7 @@ function QuotationDetails() {
           )}
 
           {parseQuotationNotes(quotation.notes).client_response && (
-            <div className="card mb-24">
+            <div className="card mb-24 invoice-no-print">
               <div className="card-header">
                 <h3 className="card-title">رد العميل من رابط العرض</h3>
               </div>
@@ -840,6 +865,17 @@ function QuotationDetails() {
                       required
                     />
                   </div>
+                </div>
+
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label">ملاحظات الإدارة (تظهر داخلياً فقط)</label>
+                  <textarea
+                    className="form-textarea"
+                    rows={3}
+                    placeholder="اكتب ملاحظة للمندوب أو للإدارة..."
+                    value={contractForm.note || ''}
+                    onChange={(e) => handleContractFormChange('note', e.target.value)}
+                  />
                 </div>
               </div>
               <div className="modal-footer">

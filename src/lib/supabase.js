@@ -178,6 +178,7 @@ export const COLLECTION_STATUS = {
 
 export const ROLES = {
   admin: 'مدير النظام',
+  manager: 'المدير',
   sales_manager: 'مدير المبيعات',
   accountant: 'محاسب',
   sales_rep: 'مندوب مبيعات',

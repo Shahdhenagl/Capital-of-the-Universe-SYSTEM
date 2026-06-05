@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, formatCurrency, formatDate, QUOTATION_STATUS, PAYMENT_FREQUENCIES, PAYMENT_METHODS, CITIES, logActivity, formatUserName } from '../lib/supabase';
+import { supabase, formatCurrency, formatDate, QUOTATION_STATUS, PAYMENT_FREQUENCIES, PAYMENT_METHODS, CITIES, logActivity, formatUserName, ROLES } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { FileText, Plus, Search, Send, Check, X, Eye, Filter, MessageCircle, Printer } from 'lucide-react';
 import { useAutocomplete } from '../contexts/AutocompleteContext';
@@ -488,11 +488,14 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
       );
 
       // Notify Sales Managers
+      const employeeName = formatUserName(profile?.full_name || profile?.email);
+      const roleName = ROLES[profile?.role] || profile?.role || 'موظف';
+      const clientName = clients.find(c => c.id === form.client_id)?.name || 'عميل';
       const managers = await fetchNotificationUsers(['admin', 'manager']);
       await notifyUsers(
         managers,
         'عرض سعر بانتظار الاعتماد',
-        `عرض سعر جديد (${form.title}) من ${formatUserName(profile?.full_name || profile?.email)} يحتاج لمراجعة المدير.`,
+        `${roleName} ${employeeName} أنشأ عرض سعر جديد (${form.title}) للعميل ${clientName} بقيمة ${formatCurrency(parseFloat(form.amount))} - يحتاج لمراجعة المدير.`,
         'warning',
         '/quotations'
       );
@@ -512,10 +515,6 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
       resetForm();
       setShowAddModal(false);
       fetchQuotations();
-      // إذا قبل العميل، نوجه الموظف لإنشاء عقد جديد من صفحة العقود
-      if (newStatus === 'client_accepted' && (isAdmin || profile?.role === 'sales_rep' || profile?.role === 'manager')) {
-        navigate(`/contracts?new_from_quotation=${quotation.id}`);
-      }
       if (uploadWarning) alert(uploadWarning);
     } catch (err) {
       console.error('خطأ في إنشاء عرض السعر:', err);
@@ -579,6 +578,9 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
         profile?.branch
       );
 
+      const statusEmployeeName = formatUserName(profile?.full_name || profile?.email);
+      const statusRoleName = ROLES[profile?.role] || profile?.role || 'موظف';
+      const statusClientName = quotation.clients?.name || 'عميل';
       const recipients = [];
       if (quotation.created_by) recipients.push({ id: quotation.created_by });
       if (['client_accepted', 'client_negotiating', 'client_rejected'].includes(newStatus)) {
@@ -587,7 +589,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
       await notifyUsers(
         recipients,
         'تحديث حالة عرض السعر',
-        `تم تغيير حالة العرض (${quotation.title}) إلى: ${QUOTATION_STATUS[newStatus]}${managerNote ? ` - ملاحظة: ${managerNote}` : ''}`,
+        `${statusRoleName} ${statusEmployeeName} غيّر حالة عرض السعر (${quotation.title}) للعميل ${statusClientName} إلى: ${QUOTATION_STATUS[newStatus]}${managerNote ? ` - ملاحظة: ${managerNote}` : ''}`,
         newStatus.includes('approved') || newStatus.includes('accepted') ? 'success' : newStatus.includes('rejected') ? 'danger' : 'warning',
         `/quotations/${quotation.id}`
       );

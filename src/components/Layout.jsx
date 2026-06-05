@@ -160,7 +160,10 @@ export default function Layout({ children, cityFilter, setCityFilter }) {
                     try {
                       window.focus();
                       if (n.link) {
-                        window.location.href = n.link;
+                        const fullUrl = window.location.origin + n.link;
+                        window.open(fullUrl, '_self');
+                      } else {
+                        window.open(window.location.origin + '/notifications', '_self');
                       }
                     } catch (e) {}
                     this.close();
