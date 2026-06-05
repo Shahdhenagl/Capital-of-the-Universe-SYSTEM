@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, formatCurrency, formatDate, QUOTATION_STATUS, PAYMENT_FREQUENCIES, PAYMENT_METHODS, CITIES, logActivity } from '../lib/supabase';
+import { supabase, formatCurrency, formatDate, QUOTATION_STATUS, PAYMENT_FREQUENCIES, PAYMENT_METHODS, CITIES, logActivity, formatUserName } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { FileText, Plus, Search, Send, Check, X, Eye, Filter, MessageCircle, Printer } from 'lucide-react';
 import { useAutocomplete } from '../contexts/AutocompleteContext';
@@ -492,7 +492,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
       await notifyUsers(
         managers,
         'عرض سعر بانتظار الاعتماد',
-        `عرض سعر جديد (${form.title}) من ${profile?.full_name || profile?.email || 'مندوب المبيعات'} يحتاج لمراجعة المدير.`,
+        `عرض سعر جديد (${form.title}) من ${formatUserName(profile?.full_name || profile?.email)} يحتاج لمراجعة المدير.`,
         'warning',
         '/quotations'
       );
@@ -556,7 +556,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
           [noteKey]: {
             status: newStatus,
             note: managerNote || '',
-            by: profile?.full_name || profile?.email || '',
+            by: formatUserName(profile?.full_name || profile?.email),
             at: new Date().toISOString()
           }
         });
@@ -651,7 +651,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
           notes: mergeQuotationNotes(selectedQuotation.notes, {
             final_approval: {
               note: 'تم الاعتماد النهائي وإنشاء عقد',
-              by: profile?.full_name || profile?.email || '',
+              by: formatUserName(profile?.full_name || profile?.email),
               at: new Date().toISOString()
             }
           })

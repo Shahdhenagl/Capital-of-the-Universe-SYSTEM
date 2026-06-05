@@ -22,11 +22,22 @@ function getModuleLink(module) {
   return '/activity-log';
 }
 
+export function formatUserName(nameOrEmail) {
+  if (!nameOrEmail) return 'مستخدم غير معروف';
+  if (nameOrEmail.includes('@')) {
+    const namePart = nameOrEmail.split('@')[0];
+    return namePart.charAt(0).toUpperCase() + namePart.slice(1);
+  }
+  return nameOrEmail;
+}
+
 export async function logActivity(userId, userName, action, module, recordId = null, details = null, branch = null) {
   try {
+    const displayActor = formatUserName(userName);
+
     await supabase.from('activity_log').insert({
       user_id: userId,
-      user_name: userName,
+      user_name: displayActor,
       action,
       module,
       record_id: recordId,
@@ -34,10 +45,9 @@ export async function logActivity(userId, userName, action, module, recordId = n
       branch
     });
 
-    const actor = userName || 'مستخدم غير معروف';
     await notifyAllAdmins(
       `عملية جديدة: ${action}`,
-      `${actor} قام بتنفيذ ${action}${details ? ` - ${details}` : ''}`,
+      `${displayActor} قام بتنفيذ ${action}${details ? ` - ${details}` : ''}`,
       'info',
       getModuleLink(module)
     );
