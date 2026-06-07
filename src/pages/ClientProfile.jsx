@@ -56,13 +56,13 @@ const QUOTATION_DETAIL_SECTIONS = [
     key: 'safety',
     title: 'السلامة والأنظمة',
     fields: [
-      ['ard', 'جهاز الإنقاذ التلقائي'],
-      ['door_sensor', 'حساس الباب'],
-      ['overload_sensor', 'حساس زيادة الوزن'],
-      ['speed_governor', 'حاكم السرعة'],
-      ['intercom', 'الإنتركم'],
-      ['emergency_light', 'إنارة الطوارئ'],
-      ['fire_mode', 'وضع الحريق']
+      ['ard', 'جهاز الإنقاذ التلقائي', 'checkbox'],
+      ['door_sensor', 'حساس الباب', 'checkbox'],
+      ['overload_sensor', 'حساس زيادة الوزن', 'checkbox'],
+      ['speed_governor', 'حاكم السرعة', 'checkbox'],
+      ['intercom', 'الإنتركم', 'checkbox'],
+      ['emergency_light', 'إنارة الطوارئ', 'checkbox'],
+      ['fire_mode', 'وضع الحريق', 'checkbox']
     ]
   },
   {
@@ -1048,11 +1048,11 @@ function ClientProfile() {
               <p className="text-muted mt-8">أضيفي عرض سعر، عقد، أو دفعة مباشرة من ملف العميل</p>
             </div>
             <div className="flex gap-8">
-              <button className="btn btn-secondary" onClick={() => openQuickModal('quotation')}>
+              <button className="btn btn-secondary" onClick={() => navigate(`/quotations?new=1&client_id=${id}`)}>
                 <Plus size={16} />
                 إضافة عرض سعر
               </button>
-              <button className="btn btn-secondary" onClick={() => openQuickModal('contract')}>
+              <button className="btn btn-secondary" onClick={() => navigate(`/contracts?new=1&client_id=${id}`)}>
                 <Plus size={16} />
                 إضافة عقد
               </button>

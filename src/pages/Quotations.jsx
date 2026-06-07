@@ -10,108 +10,28 @@ import ClientSiteSelect from '../components/ClientSiteSelect';
 import PrintHeader from '../components/PrintHeader';
 import PrintFooter from '../components/PrintFooter';
 
-const QUOTATION_DETAIL_SECTIONS = [
-  {
-    key: 'project',
-    title: 'بيانات المشروع',
-    fields: [
-      ['project_name', 'اسم المشروع'],
-      ['project_location', 'موقع المشروع'],
-      ['quotation_date', 'تاريخ العرض', 'date'],
-      ['validity_period', 'مدة صلاحية العرض']
-    ]
-  },
-  {
-    key: 'elevator',
-    title: 'مواصفات المصعد',
-    fields: [
-      ['elevator_type', 'نوع المصعد'],
-      ['brand', 'الماركة'],
-      ['capacity', 'الحمولة'],
-      ['speed', 'السرعة'],
-      ['stops', 'عدد الوقفات', 'number'],
-      ['entrances', 'عدد المداخل', 'number'],
-      ['drive_type', 'نوع التشغيل'],
-      ['machine_type', 'نوع الماكينة'],
-      ['control_type', 'نوع الكنترول'],
-      ['shaft_dimensions', 'مقاس البئر'],
-      ['cabin_dimensions', 'مقاس الكابينة'],
-      ['door_dimensions', 'مقاس الأبواب'],
-      ['travel_distance', 'مسافة الرحلة']
-    ]
-  },
-  {
-    key: 'finishes',
-    title: 'التشطيبات',
-    fields: [
-      ['cabin_design', 'تصميم الكابينة'],
-      ['cabin_finish', 'تشطيب الكابينة'],
-      ['flooring', 'الأرضية'],
-      ['ceiling', 'السقف'],
-      ['doors_finish', 'تشطيب الأبواب'],
-      ['operation_panels', 'لوحات التشغيل'],
-      ['handrail_mirror', 'الدرابزين / المرآة']
-    ]
-  },
-  {
-    key: 'safety',
-    title: 'السلامة والأنظمة',
-    fields: [
-      ['ard', 'جهاز الإنقاذ التلقائي', 'checkbox'],
-      ['door_sensor', 'حساس الباب', 'checkbox'],
-      ['overload_sensor', 'حساس زيادة الوزن', 'checkbox'],
-      ['speed_governor', 'حاكم السرعة', 'checkbox'],
-      ['intercom', 'الإنتركم', 'checkbox'],
-      ['emergency_light', 'إنارة الطوارئ', 'checkbox'],
-      ['fire_mode', 'وضع الحريق', 'checkbox']
-    ]
-  },
-  {
-    key: 'execution',
-    title: 'التنفيذ والضمان',
-    fields: [
-      ['supply_duration', 'مدة التوريد'],
-      ['installation_duration', 'مدة التركيب'],
-      ['warranty', 'الضمان'],
-      ['maintenance_included', 'الصيانة المشمولة'],
-      ['excluded_items', 'الأعمال غير المشمولة']
-    ]
-  },
-  {
-    key: 'financial',
-    title: 'الشروط المالية',
-    fields: [
-      ['price_before_vat', 'السعر قبل الضريبة', 'number'],
-      ['vat_amount', 'ضريبة القيمة المضافة', 'number'],
-      ['payment_terms', 'شروط الدفع'],
-      ['bank_details', 'بيانات التحويل']
-    ]
-  }
-];
+import { INSTALL_SECTIONS, MAINTENANCE_SECTIONS, createEmptyDetails } from '../lib/formSections';
 
-function createEmptyQuotationDetails() {
-  return QUOTATION_DETAIL_SECTIONS.reduce((acc, section) => {
-    acc[section.key] = {};
-    section.fields.forEach(([field, , type]) => {
-      if (type === 'checkbox') acc[section.key][field] = true;
-    });
-    return acc;
-  }, {});
+function createEmptyQuotationDetails(type = 'supply_installation') {
+  if (type === 'maintenance') return createEmptyDetails(MAINTENANCE_SECTIONS);
+  return createEmptyDetails(INSTALL_SECTIONS);
 }
 
 function parseQuotationDescription(description) {
-  if (!description) return { plainDescription: '', details: createEmptyQuotationDetails() };
+  if (!description) return { quotation_type: 'supply_installation', plainDescription: '', details: createEmptyQuotationDetails('supply_installation') };
   try {
     const parsed = JSON.parse(description);
+    const qType = parsed.quotation_type || 'supply_installation';
     return {
+      quotation_type: qType,
       plainDescription: parsed.plainDescription || '',
       details: {
-        ...createEmptyQuotationDetails(),
+        ...createEmptyQuotationDetails(qType),
         ...(parsed.details || {})
       }
     };
   } catch {
-    return { plainDescription: description, details: createEmptyQuotationDetails() };
+    return { quotation_type: 'supply_installation', plainDescription: description, details: createEmptyQuotationDetails('supply_installation') };
   }
 }
 
@@ -158,7 +78,7 @@ function getSafeStoragePath(folder, file, fallbackExtension = 'pdf') {
   return `${folder}/${uniqueName}`;
 }
 
-function Quotations({ cityFilter: globalCityFilter = 'all' }) {
+function Quotations({ cityFilter = 'all' }) {
   const { profile, hasPermission, isAdmin } = useAuth();
   const { saveMemory } = useAutocomplete();
   const navigate = useNavigate();
@@ -169,8 +89,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [cityFilter, setCityFilter] = useState('all');
-
+  
   // PDF Printing state
   const [printItem, setPrintItem] = useState(null);
 
@@ -186,12 +105,13 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
+    quotation_type: 'supply_installation',
     client_id: '',
     client_site_id: '',
     service_id: '',
     title: '',
     description: '',
-    details: createEmptyQuotationDetails(),
+    details: createEmptyQuotationDetails('supply_installation'),
     amount: '',
     branch: 'mecca',
     pdf_file: null
@@ -214,6 +134,14 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
   useEffect(() => {
     fetchQuotations();
     fetchClients();
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('new') === '1') {
+      setShowAddModal(true);
+      if (params.get('client_id')) {
+        setForm(prev => ({ ...prev, client_id: params.get('client_id') }));
+      }
+    }
+
     fetchServices();
   }, []);
 
@@ -382,12 +310,13 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
 
   function resetForm() {
     setForm({
+      quotation_type: 'supply_installation',
       client_id: '',
       client_site_id: '',
       service_id: '',
       title: '',
       description: '',
-      details: createEmptyQuotationDetails(),
+      details: createEmptyQuotationDetails('supply_installation'),
       amount: '',
       branch: 'mecca',
       pdf_file: null
@@ -397,6 +326,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
 
   function buildQuotationDescription() {
     return JSON.stringify({
+      quotation_type: form.quotation_type || 'supply_installation',
       plainDescription: form.description,
       details: form.details
     });
@@ -503,7 +433,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
       // Save memory for autocomplete
       const memoryItems = [];
       if (form.title) memoryItems.push({ category: 'quotation_title', value: form.title });
-      QUOTATION_DETAIL_SECTIONS.forEach(section => {
+      (form.quotation_type === 'maintenance' ? MAINTENANCE_SECTIONS : INSTALL_SECTIONS).forEach(section => {
         section.fields.forEach(([field, label, type = 'text']) => {
           if (type === 'text' && form.details?.[section.key]?.[field]) {
             memoryItems.push({ category: field, value: form.details[section.key][field] });
@@ -915,12 +845,13 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
 
   function getQuotationDetailRows(quotation) {
     const parsed = parseQuotationDescription(quotation.description);
-    return QUOTATION_DETAIL_SECTIONS.flatMap(section =>
+    const sections = parsed.quotation_type === 'maintenance' ? MAINTENANCE_SECTIONS : INSTALL_SECTIONS;
+    return sections.flatMap(section =>
       section.fields
         .map(([field, label]) => ({
           section: section.title,
           label,
-          value: parsed.details?.[section.key]?.[field]
+          value: parsed.details?.[section.key]?.[field] === true ? '?????' : parsed.details?.[section.key]?.[field]
         }))
         .filter(row => hasDetailValue(row.value))
     );
@@ -983,26 +914,7 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
               </button>
             ))}
         </div>
-        <div className="filter-group">
-          <button
-            className={`city-filter-btn ${cityFilter === 'all' ? 'active' : ''}`}
-            onClick={() => setCityFilter('all')}
-          >
-            كل الفروع
-          </button>
-          <button
-            className={`city-filter-btn ${cityFilter === 'mecca' ? 'active' : ''}`}
-            onClick={() => setCityFilter('mecca')}
-          >
-            مكة
-          </button>
-          <button
-            className={`city-filter-btn ${cityFilter === 'jeddah' ? 'active' : ''}`}
-            onClick={() => setCityFilter('jeddah')}
-          >
-            جدة
-          </button>
-        </div>
+
       </div>
 
       {/* Quotations Table */}
@@ -1238,7 +1150,21 @@ function Quotations({ cityFilter: globalCityFilter = 'all' }) {
                   />
                 </div>
 
-                {QUOTATION_DETAIL_SECTIONS.map(section => (
+                <div className="form-group">
+                  <label className="form-label">نوع عرض السعر</label>
+                  <select
+                    className="form-select"
+                    value={form.quotation_type || 'supply_installation'}
+                    onChange={(e) => {
+                      const newType = e.target.value;
+                      setForm({ ...form, quotation_type: newType, details: createEmptyQuotationDetails(newType) });
+                    }}
+                  >
+                    <option value="supply_installation">توريد وتركيب مصاعد</option>
+                    <option value="maintenance">صيانة مصاعد</option>
+                  </select>
+                </div>
+                {(form.quotation_type === 'maintenance' ? MAINTENANCE_SECTIONS : INSTALL_SECTIONS).map(section => (
                   <div className="card mb-24" key={section.key}>
                     <div className="card-header">
                       <h3 className="card-title">{section.title}</h3>

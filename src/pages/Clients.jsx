@@ -6,14 +6,13 @@ import { Users, Plus, Upload, Search, Phone, MapPin, DollarSign, X, MessageCircl
 import { formatSaudiLocalPhoneInput, isValidSaudiLocalPhone, openGoogleMaps, openWhatsApp } from '../lib/integrations';
 import Papa from 'papaparse';
 
-function Clients({ cityFilter: globalCityFilter = 'all' }) {
+function Clients({ cityFilter = 'all' }) {
   const { profile } = useAuth();
   const navigate = useNavigate();
 
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [cityFilter, setCityFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('active');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCsvModal, setShowCsvModal] = useState(false);
@@ -325,26 +324,7 @@ function Clients({ cityFilter: globalCityFilter = 'all' }) {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="filter-group">
-          <button
-            className={`city-filter-btn ${cityFilter === 'all' ? 'active' : ''}`}
-            onClick={() => setCityFilter('all')}
-          >
-            الكل
-          </button>
-          <button
-            className={`city-filter-btn ${cityFilter === 'mecca' ? 'active' : ''}`}
-            onClick={() => setCityFilter('mecca')}
-          >
-            مكة
-          </button>
-          <button
-            className={`city-filter-btn ${cityFilter === 'jeddah' ? 'active' : ''}`}
-            onClick={() => setCityFilter('jeddah')}
-          >
-            جدة
-          </button>
-        </div>
+
         <div className="filter-group">
           <button
             className={`city-filter-btn ${statusFilter === 'active' ? 'active' : ''}`}

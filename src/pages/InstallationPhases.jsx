@@ -12,7 +12,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 
-export default function InstallationPhases() {
+export default function InstallationPhases({ cityFilter = 'all' }) {
   const { profile } = useAuth();
   const [phases, setPhases] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,8 +20,7 @@ export default function InstallationPhases() {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('pending');
-  const [filterBranch, setFilterBranch] = useState('all');
-
+  
   useEffect(() => {
     fetchPhases();
   }, [profile]);
@@ -130,7 +129,7 @@ export default function InstallationPhases() {
       phase.phase_name?.includes(searchTerm);
     
     const matchesStatus = filterStatus === 'all' || phase.status === filterStatus;
-    const matchesBranch = filterBranch === 'all' || phase.branch === filterBranch;
+    const matchesBranch = cityFilter === 'all' || phase.branch === cityFilter;
 
     return matchesSearch && matchesStatus && matchesBranch;
   });
@@ -155,29 +154,7 @@ export default function InstallationPhases() {
       <div className="filter-bar">
         <div className="filter-group">
           <Filter size={18} />
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="form-select"
-          >
-            <option value="all">جميع الحالات</option>
-            <option value="pending">معلقة</option>
-            <option value="in_progress">جاري التنفيذ</option>
-            <option value="completed">مكتملة</option>
-          </select>
-        </div>
-        {profile?.role === 'admin' && (
-          <div className="filter-group">
-            <select
-              value={filterBranch}
-              onChange={(e) => setFilterBranch(e.target.value)}
-              className="form-select"
-            >
-              <option value="all">جميع الفروع</option>
-              {Object.entries(CITIES).map(([key, value]) => (
-                <option key={key} value={key}>{value}</option>
-              ))}
-            </select>
+          
           </div>
         )}
         <div className="filter-group search-wrapper">

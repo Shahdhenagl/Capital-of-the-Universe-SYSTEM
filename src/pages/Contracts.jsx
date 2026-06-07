@@ -27,6 +27,7 @@ import PrintHeader from '../components/PrintHeader';
 import PrintFooter from '../components/PrintFooter';
 import ContractPrintTemplate from '../components/ContractPrintTemplate';
 import InstallPrintTemplate from '../components/InstallPrintTemplate';
+import { INSTALL_SECTIONS, MAINTENANCE_SECTIONS, createEmptyDetails } from '../lib/formSections';
 
 const CONTRACT_TYPES = {
   supply_installation: 'توريد وتركيب مصاعد',
@@ -57,18 +58,11 @@ const EMPTY_FORM = {
   end_date: '',
   status: 'active',
   details: {
-    contract: {},
-    customer: {},
-    elevator: {},
-    finishes: {},
-    safety: {
-      limit_switch: true,
-      parachute: true,
-      revision_device: true,
-      oilers: true,
-      flexible_cable: true,
-      shock_absorbers: true,
-      fire_brake_device: true
+    ...createEmptyDetails(INSTALL_SECTIONS),
+    ...createEmptyDetails(MAINTENANCE_SECTIONS),
+    links: {
+      client_site_id: null,
+      uses_client_address: false
     },
     maintenance: {
       preventive: true,
@@ -79,160 +73,14 @@ const EMPTY_FORM = {
     sla: {},
     parts: {},
     links: {},
-    alerts: {}
+    alerts: {
+      payment_status: 'regular'
+    }
   },
   payment_schedule: [{ label: 'الدفعة الأولى', description: '', percentage: 100, amount: '', due_date: '' }],
   attachments: []
 };
 
-const INSTALL_SECTIONS = [
-  {
-    key: 'contract',
-    title: 'بيانات العقد الأساسية',
-    fields: [
-      ['project_name', 'اسم المشروع'],
-      ['project_location', 'موقع المشروع (المدينة والحي)'],
-      ['contract_date', 'تاريخ العقد', 'date'],
-      ['elevator_brand', 'ماركة المصعد']
-    ]
-  },
-  {
-    key: 'customer',
-    title: 'بيانات العميل',
-    fields: [
-      ['customer_name', 'اسم العميل / المؤسسة'],
-      ['identity_number', 'رقم الهوية / السجل التجاري'],
-      ['address', 'العنوان'],
-      ['mobile', 'رقم الجوال']
-    ]
-  },
-  {
-    key: 'elevator',
-    title: 'المواصفات الفنية الرئيسية',
-    fields: [
-      ['elevator_type', 'نوع المصعد'],
-      ['entrances', 'عدد المداخل', 'number'],
-      ['speed', 'سرعة المصعد'],
-      ['stops', 'عدد الوقفات', 'number'],
-      ['travel_distance', 'مشوار الصاعدة'],
-      ['machine_type', 'الماكينة'],
-      ['shaft_type', 'نوع البئر'],
-      ['machine_position', 'موضع الماكينة'],
-      ['shaft_dimensions', 'أبعاد البئر'],
-      ['capacity_persons', 'عدد الأشخاص / الحمولة'],
-      ['door_dimensions', 'مقاس الباب'],
-      ['outer_door_type', 'نوع الباب الخارجي'],
-      ['inner_door_type', 'الباب الداخلي'],
-      ['cam_type', 'الكامة']
-    ]
-  },
-  {
-    key: 'mechanical',
-    title: 'المواصفات الميكانيكية والسكك',
-    fields: [
-      ['cabin_rails', 'سكك الكابينة'],
-      ['counterweight_rails', 'سكك الثقل'],
-      ['counterweight', 'ثقل الموازنة'],
-      ['traction_ropes', 'حبال الجر'],
-      ['electrical_wiring', 'التمديدات الكهربائية']
-    ]
-  },
-  {
-    key: 'cabin_control',
-    title: 'الصاعدة ولوحة التحكم',
-    fields: [
-      ['floor_indicator', 'مبين الأدوار'],
-      ['cabin_details', 'مواصفات الصاعدة (الكابينة)'],
-      ['control_panel', 'لوحة التحكم (الكنترول)']
-    ]
-  },
-  {
-    key: 'safety',
-    title: 'مواصفات الأمان',
-    fields: [
-      ['limit_switch', 'قاطع نهاية المشوار', 'checkbox'],
-      ['parachute', 'البراشوت', 'checkbox'],
-      ['revision_device', 'جهاز الريفيزيون', 'checkbox'],
-      ['oilers', 'المزايت', 'checkbox'],
-      ['flexible_cable', 'الكابل المرن', 'checkbox'],
-      ['shock_absorbers', 'مخفف الصدمات', 'checkbox'],
-      ['fire_brake_device', 'جهاز الفرامل في حالة الحريق', 'checkbox']
-    ]
-  }
-];
-
-const MAINTENANCE_SECTIONS = [
-  {
-    key: 'contract',
-    title: 'بيانات العقد',
-    fields: [
-      ['facility_name', 'اسم العميل / المنشأة'],
-      ['facility_location', 'موقع المنشأة'],
-      ['covered_elevators_count', 'عدد المصاعد المشمولة', 'number'],
-      ['contract_duration', 'مدة العقد']
-    ]
-  },
-  {
-    key: 'customer',
-    title: 'بيانات العميل',
-    fields: [
-      ['organization_name', 'اسم المؤسسة'],
-      ['identity_number', 'السجل التجاري أو الهوية'],
-      ['tax_number', 'الرقم الضريبي'],
-      ['contact_data', 'بيانات التواصل'],
-      ['responsible_person', 'الشخص المسؤول']
-    ]
-  },
-  {
-    key: 'elevator',
-    title: 'المصاعد المشمولة بالصيانة',
-    fields: [
-      ['elevator_reference', 'مرجع المصعد'],
-      ['brand', 'الماركة'],
-      ['capacity', 'الحمولة'],
-      ['stops', 'عدد الوقفات', 'number'],
-      ['serial_number', 'الرقم التسلسلي']
-    ]
-  },
-  {
-    key: 'maintenance',
-    title: 'نوع الصيانة',
-    fields: [
-      ['preventive', 'صيانة وقائية', 'checkbox'],
-      ['corrective', 'صيانة تصحيحية', 'checkbox'],
-      ['emergency_247', 'طوارئ 24/7', 'checkbox']
-    ]
-  },
-  {
-    key: 'visits',
-    title: 'خطة الزيارات',
-    fields: [
-      ['monthly_visits', 'عدد الزيارات الشهرية', 'number'],
-      ['quarterly_visits', 'الزيارات الربع سنوية'],
-      ['annual_visit', 'الزيارة السنوية الشاملة']
-    ]
-  },
-  {
-    key: 'sla',
-    title: 'مستوى الخدمة (SLA)',
-    fields: [
-      ['failure_response_time', 'زمن الاستجابة للأعطال'],
-      ['emergency_response_time', 'زمن الاستجابة للطوارئ'],
-      ['working_hours', 'أوقات العمل'],
-      ['emergency_numbers', 'أرقام الطوارئ']
-    ]
-  },
-  {
-    key: 'parts',
-    title: 'القطع والمواد',
-    fields: [
-      ['included_parts', 'القطع المشمولة بالعقد'],
-      ['excluded_parts', 'القطع غير المشمولة'],
-      ['client_responsibility', 'مسؤولية العميل'],
-      ['company_responsibility', 'مسؤولية الشركة']
-    ]
-  }
-];
 
 function cloneForm() {
   return JSON.parse(JSON.stringify(EMPTY_FORM));
@@ -603,13 +451,12 @@ function Contracts({ cityFilter = 'all' }) {
           },
           customer: {
             ...next.details.customer,
-            customer_name: client?.name || '',
-            organization_name: client?.name || '',
-            mobile: client?.phone || '',
-            email: client?.email || '',
-            address: client?.address || '',
-            contact_data: client?.phone || '',
-            responsible_person: client?.contact_person || ''
+            customer_name: client?.name || next.details.customer?.customer_name || '',
+            organization_name: client?.name || next.details.customer?.organization_name || '',
+            mobile: client?.phone || next.details.customer?.mobile || '',
+            contact_data: client?.phone || next.details.customer?.contact_data || '',
+            address: defaultSite?.address || client?.address || next.details.customer?.address || '',
+            identity_number: client?.cr_number || next.details.customer?.identity_number || ''
           }
         };
       }
@@ -759,13 +606,45 @@ function Contracts({ cityFilter = 'all' }) {
 
   async function handleSaveContract(event) {
     event.preventDefault();
-    if (!form.client_id || !form.contract_number || !form.total_amount || !form.start_date) {
-      alert('يرجى تعبئة رقم العقد والعميل وقيمة العقد وتاريخ البداية');
+    if (!form.contract_number || !form.total_amount || !form.start_date) {
+      alert('يرجى تعبئة رقم العقد وقيمة العقد وتاريخ البداية');
       return;
     }
 
     try {
       setSaving(true);
+      
+      let finalClientId = form.client_id;
+      const custName = form.details?.customer?.customer_name || form.details?.customer?.organization_name;
+      const custMobile = form.details?.customer?.mobile || form.details?.customer?.contact_data || '';
+      const custIdentity = form.details?.customer?.identity_number || '';
+      const custAddress = form.details?.customer?.address || '';
+
+      if (!finalClientId) {
+        if (!custName) {
+           alert('يرجى اختيار عميل أو إدخال اسم العميل الجديد في بيانات العميل');
+           setSaving(false);
+           return;
+        }
+        const { data: newClient, error: clientErr } = await supabase.from('clients').insert({
+          name: custName,
+          phone: custMobile,
+          address: custAddress,
+          cr_number: custIdentity
+        }).select().single();
+        if (clientErr) throw clientErr;
+        finalClientId = newClient.id;
+      } else {
+        if (custName) {
+           const updatePayload = { name: custName };
+           if (custMobile) updatePayload.phone = custMobile;
+           if (custAddress) updatePayload.address = custAddress;
+           if (custIdentity) updatePayload.cr_number = custIdentity;
+           
+           await supabase.from('clients').update(updatePayload).eq('id', finalClientId);
+        }
+      }
+
       const uploadedAttachments = await uploadContractAttachments(form.attachments, form.contract_number);
       const details = {
         ...form.details,
@@ -783,7 +662,7 @@ function Contracts({ cityFilter = 'all' }) {
 
       const payload = {
         contract_number: form.contract_number,
-        client_id: form.client_id,
+        client_id: finalClientId,
         service_type: form.service_type || CONTRACT_TYPES[form.contract_type],
         title: form.title || CONTRACT_TYPES[form.contract_type],
         total_amount: parseFloat(form.total_amount) || 0,
@@ -818,7 +697,7 @@ function Contracts({ cityFilter = 'all' }) {
       if (validPayments.length > 0) {
         const scheduleRows = validPayments.map(row => ({
           contract_id: contractData.id,
-          client_id: form.client_id,
+          client_id: finalClientId,
           due_date: row.due_date,
           amount: parseFloat(row.amount) || 0,
           status: 'pending',
@@ -850,7 +729,7 @@ function Contracts({ cityFilter = 'all' }) {
           
           visits.push({
             contract_id: contractData.id,
-            client_id: form.client_id,
+            client_id: finalClientId,
             scheduled_date: currentDate.toISOString().split('T')[0],
             status: 'pending',
             has_collection: !!matchedCollection,
@@ -892,7 +771,7 @@ function Contracts({ cityFilter = 'all' }) {
 
           return {
             contract_id: contractData.id,
-            client_id: form.client_id,
+            client_id: finalClientId,
             phase_number: phase.phase_number,
             phase_name: phase.phase_name,
             scheduled_date: scheduleDate.toISOString().split('T')[0],
@@ -1505,7 +1384,7 @@ function Contracts({ cityFilter = 'all' }) {
                       <tbody>
                         {form.payment_schedule.map((row, index) => (
                           <tr key={index}>
-                            <td><input className="form-input" value={row.label} onChange={e => updatePaymentRow(index, 'label', e.target.value)} /></td>
+                            <td><input className="form-input" value={row.label} onChange={e => updatePaymentRow(index, 'label', e.target.value)} placeholder="مثال: عربون" /></td>
                             <td><input className="form-input" value={row.description || ''} onChange={e => updatePaymentRow(index, 'description', e.target.value)} placeholder="مثال: دفعة مقدمة عند توقيع العقد" /></td>
                             <td><input type="number" className="form-input" value={row.percentage} onChange={e => updatePaymentRow(index, 'percentage', e.target.value)} min="0" max="100" /></td>
                             <td><input type="number" className="form-input" value={row.amount} onChange={e => updatePaymentRow(index, 'amount', e.target.value)} min="0" step="0.01" /></td>
