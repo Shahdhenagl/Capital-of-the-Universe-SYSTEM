@@ -163,7 +163,7 @@ function Contracts({ cityFilter = 'all' }) {
   // If redirected from a quotation acceptance, open contract form prefilled
   useEffect(() => {
     const params = new URLSearchParams(location.search || '');
-    const qid = params.get('new_from_quotation');
+    const qid = params.get('quotation_id') || params.get('new_from_quotation');
     if (!qid) return;
     // wait until clients are loaded
     if (!clients || clients.length === 0) return;
@@ -173,17 +173,44 @@ function Contracts({ cityFilter = 'all' }) {
         const { data: quotation, error } = await supabase.from('quotations').select('*').eq('id', qid).single();
         if (error || !quotation) return;
 
+        // Parse quotation description
+        let parsed = { plainDescription: '', details: {}, quotation_type: 'supply_installation' };
+        try {
+          parsed = JSON.parse(quotation.description);
+        } catch {
+          parsed.plainDescription = quotation.description;
+        }
+
+        const contractType = parsed.quotation_type || 'supply_installation';
+        
         // Prepare a contract form prefilled from the quotation
-        resetForm('supply_installation');
+        resetForm(contractType);
+        
         setForm(prev => ({
           ...prev,
+          contract_type: contractType,
+          quotation_id: qid,
           client_id: quotation.client_id || prev.client_id,
           title: quotation.title || prev.title,
           total_amount: quotation.amount || prev.total_amount,
           start_date: new Date().toISOString().split('T')[0],
-          end_date: ''
+          end_date: '',
+          branch: quotation.branch || prev.branch,
+          details: {
+            ...prev.details,
+            ...parsed.details,
+            links: {
+              ...(prev.details?.links || {}),
+              ...(parsed.details?.links || {}),
+            }
+          }
         }));
-        setPlainNotes(prev => (quotation.description || prev));
+        
+        setPlainNotes(parsed.plainDescription || '');
+        
+        // Remove parameter from URL to avoid re-triggering
+        window.history.replaceState({}, '', '/contracts');
+        
         setShowFormModal(true);
       } catch (e) {
         console.error('خطأ في جلب بيانات العرض لتعبئة نموذج العقد:', e);

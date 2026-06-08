@@ -455,19 +455,6 @@ function Quotations({ cityFilter = 'all' }) {
   }
 
   async function handleStatusChange(quotation, newStatus) {
-    if (newStatus === 'final_approved') {
-      setSelectedQuotation(quotation);
-      setContractForm({
-        total_amount: quotation.amount || '',
-        payment_frequency: 'monthly',
-        payment_method: 'cash',
-        start_date: new Date().toISOString().split('T')[0],
-        end_date: ''
-      });
-      setShowContractModal(true);
-      return;
-    }
-
     try {
       const needsManagerNote = ['manager_approved', 'manager_rejected', 'final_rejected'].includes(newStatus);
       const managerNote = needsManagerNote
@@ -932,6 +919,7 @@ function Quotations({ cityFilter = 'all' }) {
             <thead>
               <tr>
                 <th>رقم العرض</th>
+                <th>نوع العرض</th>
                 <th>العميل</th>
                 <th>العنوان</th>
                 <th>المبلغ</th>
@@ -944,6 +932,7 @@ function Quotations({ cityFilter = 'all' }) {
               {filteredQuotations.map(q => (
                 <tr key={q.id}>
                   <td>{q.quotation_number || q.id?.slice(0, 8)}</td>
+                  <td>{parseQuotationDescription(q.description)?.quotation_type === 'maintenance' ? 'صيانة' : 'توريد وتركيب'}</td>
                   <td>{q.clients?.name || '-'}</td>
                   <td>{q.title || '-'}</td>
                   <td>{formatCurrency(q.amount)}</td>
@@ -1010,8 +999,8 @@ function Quotations({ cityFilter = 'all' }) {
                         <>
                           <button
                             className="btn btn-ghost btn-sm"
-                            onClick={() => handleStatusChange(q, 'final_approved')} // Will open contract modal
-                            title="اعتماد نهائي (تحويل لعقد)"
+                            onClick={() => handleStatusChange(q, 'final_approved')}
+                            title="اعتماد نهائي"
                           >
                             <Check size={16} className="text-success" />
                           </button>
@@ -1023,6 +1012,17 @@ function Quotations({ cityFilter = 'all' }) {
                             <X size={16} className="text-danger" />
                           </button>
                         </>
+                      )}
+                      
+                      {q.status === 'final_approved' && (
+                        <button
+                          className="btn btn-primary btn-sm"
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                          onClick={() => navigate('/contracts?quotation_id=' + q.id)}
+                          title="إنشاء عقد من العرض"
+                        >
+                          إنشاء عقد
+                        </button>
                       )}
 
                       {/* Sales Rep / Admin Actions */}

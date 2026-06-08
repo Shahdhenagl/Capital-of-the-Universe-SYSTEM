@@ -156,7 +156,6 @@ export default function InstallationPhases({ cityFilter = 'all' }) {
           <Filter size={18} />
           
           </div>
-        )}
         <div className="filter-group search-wrapper">
           <Search size={18} className="search-icon" />
           <input
