@@ -38,11 +38,7 @@ function Clients({ cityFilter = 'all' }) {
 
   useEffect(() => {
     fetchClients();
-  }, []);
-
-  useEffect(() => {
-    setCityFilter(globalCityFilter || 'all');
-  }, [globalCityFilter]);
+  }, [cityFilter]);
 
   async function fetchClients() {
     try {
