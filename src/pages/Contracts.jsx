@@ -20,6 +20,8 @@ import {
   X
 } from 'lucide-react';
 import { useAutocomplete } from '../contexts/AutocompleteContext';
+import { appendGoogleSheet, downloadCsv, notifyIntegrations, openGoogleMaps, openWhatsApp, uploadDriveTextFile } from '../lib/integrations';
+import { notifyContractCreated } from '../lib/whatsapp';
 import SmartInput from '../components/SmartInput';
 import ClientSearchSelect from '../components/ClientSearchSelect';
 import ClientSiteSelect from '../components/ClientSiteSelect';
@@ -861,6 +863,21 @@ function Contracts({ cityFilter = 'all' }) {
         });
       });
       saveMemory(memoryItems);
+
+      // Send WhatsApp Notification to the client if it's a new contract
+      if (!editingContract) {
+        let clientPhone = null;
+        if (finalClientId) {
+          const clientData = clients.find(c => c.id === finalClientId);
+          if (clientData?.phone) clientPhone = clientData.phone;
+        } else if (form.client?.phone) {
+          clientPhone = form.client.phone;
+        }
+        
+        if (clientPhone) {
+          await notifyContractCreated(clientPhone, contractData.contract_number, contractData.total_amount);
+        }
+      }
 
       closeFormModal();
       fetchData();

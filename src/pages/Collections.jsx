@@ -3,6 +3,7 @@ import { supabase, formatCurrency, formatDate, CITIES, COLLECTION_STATUS, PAYMEN
 import { useAuth } from '../contexts/AuthContext';
 import { Wallet, DollarSign, Calendar, AlertCircle, Check, Search, X, Filter, Download, MessageCircle, UploadCloud } from 'lucide-react';
 import { appendGoogleSheet, downloadCsv, notifyIntegrations, openWhatsApp, uploadDriveTextFile } from '../lib/integrations';
+import { notifyCollectionReceived } from '../lib/whatsapp';
 
 function parsePaymentNote(notes, fallbackLabel = 'دفعة') {
   if (!notes) return { label: fallbackLabel, description: '' };
@@ -295,6 +296,18 @@ function Collections({ cityFilter = 'all' }) {
         link: '/collections',
         whatsapp: true
       });
+
+      // Send WhatsApp Notification to the client
+      if (selectedSchedule.clients?.phone) {
+        // Calculate remaining balance after this payment
+        const remainingBalance = Math.max(0, amountDue - totalNowCollected);
+        await notifyCollectionReceived(
+          selectedSchedule.clients.phone, 
+          collectedAmount, 
+          collectForm.receipt_number || 'N/A', 
+          remainingBalance
+        );
+      }
 
       setShowCollectModal(false);
       setSelectedSchedule(null);

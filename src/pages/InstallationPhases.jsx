@@ -11,6 +11,7 @@ import {
   AlertCircle,
   RefreshCw
 } from 'lucide-react';
+import { notifyInstallationStart } from '../lib/whatsapp';
 
 export default function InstallationPhases({ cityFilter = 'all' }) {
   const { profile } = useAuth();
@@ -86,6 +87,16 @@ export default function InstallationPhases({ cityFilter = 'all' }) {
         `إكمال المرحلة: ${phase.phase_name} للعقد ${phase.contracts?.contract_number}`,
         phase.branch
       );
+
+      // Send WhatsApp Notification to the client
+      const clientPhone = phase.clients?.phone || phase.contracts?.clients?.phone;
+      if (clientPhone) {
+        await notifyInstallationStart(
+          clientPhone,
+          phase.phase_name,
+          new Date().toLocaleDateString('ar-SA')
+        );
+      }
 
       fetchPhases();
     } catch (err) {

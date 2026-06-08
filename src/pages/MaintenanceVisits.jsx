@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase, CITIES, formatCurrency, formatDate, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, CheckCircle, Clock, Upload, Filter, AlertCircle, FileText, Check, FileUp, Building2, Phone, X } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, Upload, Filter, AlertCircle, FileText, Check, FileUp, Building2, Phone, X, Smartphone } from 'lucide-react';
+import { notifyMaintenanceReminder } from '../lib/whatsapp';
 
 export default function MaintenanceVisits({ cityFilter = 'all' }) {
   const { profile } = useAuth();
@@ -145,6 +146,37 @@ export default function MaintenanceVisits({ cityFilter = 'all' }) {
     }
   }
 
+  async function sendTomorrowReminders() {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+
+    const tomorrowVisits = visits.filter(v => v.scheduled_date === tomorrowStr && v.status !== 'completed');
+
+    if (tomorrowVisits.length === 0) {
+      alert('لا توجد زيارات صيانة مجدولة لغداً في هذه القائمة.');
+      return;
+    }
+
+    if (!confirm(`هل أنت متأكد من إرسال رسائل تذكير واتساب لـ ${tomorrowVisits.length} عميل بخصوص صيانة غداً؟`)) return;
+
+    let successCount = 0;
+    for (const visit of tomorrowVisits) {
+      const clientPhone = visit.clients?.phone;
+      if (clientPhone) {
+        const success = await notifyMaintenanceReminder(
+          clientPhone,
+          visit.contracts?.title || 'زيارة صيانة دورية',
+          visit.clients?.name || 'عميلنا العزيز',
+          visit.branch || '',
+          visit.scheduled_date
+        );
+        if (success) successCount++;
+      }
+    }
+    alert(`تم الانتهاء! تم إرسال ${successCount} رسالة بنجاح.`);
+  }
+
   const getStatusBadge = (status) => {
     switch (status) {
       case 'completed': return <span className="badge badge-success"><CheckCircle size={14} className="mr-1" /> تمت</span>;
@@ -155,11 +187,15 @@ export default function MaintenanceVisits({ cityFilter = 'all' }) {
 
   return (
     <div>
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="page-title">
           <Calendar size={28} style={{ color: '#0f766e' }} />
           حركات الصيانة وجدولة الزيارات
         </h1>
+        <button className="btn btn-primary" onClick={sendTomorrowReminders}>
+          <Smartphone size={18} className="mr-2" />
+          إرسال إشعارات صيانة غداً
+        </button>
       </div>
 
       <div className="filters-section" style={{ display: 'flex', gap: '15px', marginBottom: '25px', flexWrap: 'wrap' }}>
