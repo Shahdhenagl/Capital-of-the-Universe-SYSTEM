@@ -6,7 +6,7 @@
 
 // Replace these with environment variables in production
 const API_ACCOUNT_ID = '40728';
-const API_ACCESS_TOKEN = 'EAAFccaKxhAEBQHnZBwltdZAjlr86P4rR68Wegqx99ZBV000nm2W9Q6I1F65FoTo0NdWRatZCxRmapV1wZA9saTrd0NXLUsB6giKl8ZBXOiblbGZBWOSDSnOvERqH8DNBkdGOEwaVZBDkVnpxgaZCHMNzcNXfyPcNLIJblVnuzjEh7nPhuNeNeogdkHMAGeIdCVNYaXA5PnjEMMbn6g3SF';
+const API_ACCESS_TOKEN = 'eLDaXuwgQ7LpwzxCA2QkN8e8';
 const API_BASE_URL = 'https://chat.bevatel.com/developer/api/v1/messages'; // Standard Bevatel API endpoint
 
 /**
