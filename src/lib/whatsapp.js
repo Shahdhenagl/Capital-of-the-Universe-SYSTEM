@@ -103,9 +103,9 @@ export async function notifyInstallationStart(phone, phaseName, date) {
 }
 
 // 4. Quotation Sent
-export async function notifyQuotationSent(phone, title, amount, date, link) {
+export async function notifyQuotationSent(phone, clientName, amount) {
   // Matches 'send_quotation' template in Meta
-  return sendWhatsAppTemplate(phone, 'send_quotation', [title, amount, date, link]);
+  return sendWhatsAppTemplate(phone, 'send_quotation', [clientName, amount]);
 }
 
 // 5. Salary Paid (For Employees)

@@ -688,20 +688,17 @@ function Quotations({ cityFilter = 'all' }) {
 
   async function sendWhatsApp(quotation) {
     const clientPhone = quotation.clients?.phone;
+    const clientName = quotation.clients?.name || 'عميلنا العزيز';
     if (!clientPhone) {
       alert('لا يوجد رقم هاتف مسجل لهذا العميل.');
       return;
     }
     
-    const publicLink = `${window.location.origin}/q/${quotation.id}`;
-    
     try {
       const success = await notifyQuotationSent(
         clientPhone,
-        quotation.title || 'عرض سعر',
-        formatCurrency(quotation.amount),
-        formatDate(quotation.created_at),
-        publicLink
+        clientName,
+        formatCurrency(quotation.amount)
       );
       
       if (success) {
