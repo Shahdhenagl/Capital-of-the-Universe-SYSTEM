@@ -32,27 +32,19 @@ export async function sendWhatsAppTemplate(phone, templateName, variables = []) 
       }
     }
 
-    // Map variables to Meta/Bevatel Cloud API components format
-    const components = [];
-    if (variables && variables.length > 0) {
-      components.push({
-        type: 'body',
-        parameters: variables.map(v => ({
-          type: 'text',
-          text: String(v)
-        }))
-      });
-    }
-
     const payload = {
-      to: cleanPhone,
-      type: 'template',
-      template: {
-        name: templateName,
-        language: {
-          code: 'ar' // Default to Arabic
-        },
-        components: components
+      inbox_id: 107608,
+      contact: {
+        phone_number: cleanPhone
+      },
+      message: {
+        template: {
+          name: templateName,
+          language: 'ar',
+          parameters: {
+            body: variables ? variables.map(v => String(v)) : []
+          }
+        }
       }
     };
 
