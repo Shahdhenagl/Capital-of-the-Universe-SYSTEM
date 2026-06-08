@@ -165,8 +165,16 @@ export default function InstallationPhases({ cityFilter = 'all' }) {
       <div className="filter-bar">
         <div className="filter-group">
           <Filter size={18} />
-          
-          </div>
+          <select 
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="form-input"
+          >
+            <option value="pending">قيد التنفيذ</option>
+            <option value="completed">مكتملة</option>
+            <option value="all">الكل</option>
+          </select>
+        </div>
         <div className="filter-group search-wrapper">
           <Search size={18} className="search-icon" />
           <input
