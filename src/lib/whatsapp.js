@@ -62,7 +62,7 @@ export async function sendWhatsAppTemplate(phone, templateName, variables = []) 
 
     if (!response.ok) {
       console.error('WhatsApp API Error:', data);
-      throw new Error(data.message || 'فشل إرسال رسالة الواتساب');
+      throw new Error(data.error || data.message || 'فشل إرسال رسالة الواتساب');
     }
 
     console.log('WhatsApp message sent successfully!', data);
@@ -70,7 +70,7 @@ export async function sendWhatsAppTemplate(phone, templateName, variables = []) 
 
   } catch (error) {
     console.error('WhatsApp Service Error:', error);
-    // We don't want to crash the main app flow if WhatsApp fails, so we catch and return false
+    alert('خطأ من نظام الواتساب (Bevatel):\n' + error.message + '\n\nيرجى التأكد من اسم القالب (Template Name) في بيفاتيل.');
     return false;
   }
 }
