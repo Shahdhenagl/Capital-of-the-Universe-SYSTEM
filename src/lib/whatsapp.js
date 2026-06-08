@@ -102,6 +102,12 @@ export async function notifyInstallationStart(phone, phaseName, date) {
   return sendWhatsAppTemplate(phone, 'installation_start', [phaseName, date]);
 }
 
+// 4. Quotation Sent
+export async function notifyQuotationSent(phone, title, amount, date, link) {
+  // Matches 'send_quotation' template in Meta
+  return sendWhatsAppTemplate(phone, 'send_quotation', [title, amount, date, link]);
+}
+
 // 5. Salary Paid (For Employees)
 export async function notifySalaryPaid(phone, employeeName, month, netSalary) {
   // Replace 'salary_paid' with your actual template name in Bevatel
