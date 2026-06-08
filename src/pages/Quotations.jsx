@@ -145,9 +145,7 @@ function Quotations({ cityFilter = 'all' }) {
     fetchServices();
   }, []);
 
-  useEffect(() => {
-    setCityFilter(globalCityFilter || 'all');
-  }, [globalCityFilter]);
+
 
   async function fetchQuotations() {
     try {
