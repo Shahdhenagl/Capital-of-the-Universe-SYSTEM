@@ -79,9 +79,9 @@ export async function sendWhatsAppTemplate(phone, templateName, variables = []) 
  */
 
 // 1. Contract Created
-export async function notifyContractCreated(phone, contractNumber, amount) {
-  // Replace 'contract_created' with your actual template name in Bevatel
-  return sendWhatsAppTemplate(phone, 'contract_created', [contractNumber, amount]);
+export async function notifyContractCreated(phone, clientName, contractNumber, amount, contractLink) {
+  // Matches 'contract_created_v2' template in Meta
+  return sendWhatsAppTemplate(phone, 'contract_created_v2', [clientName, contractNumber, amount, contractLink]);
 }
 
 // 2. Collection Received
@@ -109,9 +109,9 @@ export async function notifyQuotationSent(phone, clientName, amount) {
 }
 
 // 5. Salary Paid (For Employees)
-export async function notifySalaryPaid(phone, employeeName, month, netSalary) {
-  // Replace 'salary_paid' with your actual template name in Bevatel
-  return sendWhatsAppTemplate(phone, 'salary_paid', [employeeName, month, netSalary]);
+export async function notifySalaryPaid(phone, employeeName, month, base, allowance, deductions, netSalary, notes) {
+  // Matches 'salary_paid_detailed' template in Meta
+  return sendWhatsAppTemplate(phone, 'salary_paid_detailed', [employeeName, month, base, allowance, deductions, netSalary, notes || 'لا توجد ملاحظات']);
 }
 
 // 6. Loan/Advance Issued (For Employees)
@@ -126,3 +126,12 @@ export async function notifyAbsenceRecorded(phone, employeeName, days, startDate
   return sendWhatsAppTemplate(phone, 'absence_recorded', [employeeName, days, startDate]);
 }
 
+// 8. Payment Reminder (Auto-sent 1 day before due)
+export async function notifyPaymentReminder(phone, clientName, contractNumber, date, amount) {
+  return sendWhatsAppTemplate(phone, 'payment_reminder_auto', [clientName, contractNumber, date, amount]);
+}
+
+// 9. Payment Overdue (Auto-sent if due date passed and pending)
+export async function notifyPaymentOverdue(phone, clientName, contractNumber, date, amount) {
+  return sendWhatsAppTemplate(phone, 'payment_overdue_auto', [clientName, contractNumber, date, amount]);
+}

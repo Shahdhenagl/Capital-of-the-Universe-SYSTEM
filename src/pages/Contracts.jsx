@@ -867,15 +867,25 @@ function Contracts({ cityFilter = 'all' }) {
       // Send WhatsApp Notification to the client if it's a new contract
       if (!editingContract) {
         let clientPhone = null;
+        let clientName = null;
         if (finalClientId) {
           const clientData = clients.find(c => c.id === finalClientId);
           if (clientData?.phone) clientPhone = clientData.phone;
+          if (clientData?.name) clientName = clientData.name;
         } else if (form.client?.phone) {
           clientPhone = form.client.phone;
+          clientName = form.client.name;
         }
         
         if (clientPhone) {
-          await notifyContractCreated(clientPhone, contractData.contract_number, contractData.total_amount);
+          const contractLink = contractData.contract_pdf_url || 'https://capital-of-the-universe-system.vercel.app';
+          await notifyContractCreated(
+            clientPhone, 
+            clientName || 'عميلنا العزيز', 
+            contractData.contract_number, 
+            formatCurrency(contractData.total_amount), 
+            contractLink
+          );
         }
       }
 

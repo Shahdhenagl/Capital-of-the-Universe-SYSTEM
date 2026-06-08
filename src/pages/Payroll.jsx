@@ -421,7 +421,11 @@ function PayrollPage({ cityFilter }) {
           disburseEmployee.phone,
           disburseEmployee.name,
           `${monthLabel} / ${selectedYear}`,
-          formatCurrency(summary.net)
+          formatCurrency(summary.base),
+          formatCurrency(summary.allowance),
+          formatCurrency(summary.deduction + summary.advancesDeducted + summary.absenceDeductionAmount),
+          formatCurrency(summary.net),
+          disburseData.notes
         );
       }
 
