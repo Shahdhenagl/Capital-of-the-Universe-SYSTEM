@@ -48,7 +48,7 @@ export async function sendWhatsAppTemplate(phone, templateName, variables = []) 
       }
     };
 
-    const response = await fetch('/api/bevatel', {
+    const response = await fetch('/api/notify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
