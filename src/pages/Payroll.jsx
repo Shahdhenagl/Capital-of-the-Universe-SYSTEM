@@ -304,8 +304,6 @@ function PayrollPage({ cityFilter }) {
         allowance_days: disburseData.allowanceType === 'days' ? parseFloat(disburseData.allowanceValue) || 0 : 0,
         deductions: summary.deduction,
         deduction_days: disburseData.deductionType === 'days' ? parseFloat(disburseData.deductionValue) || 0 : 0,
-        absence_deduction_days: summary.absenceDeductionDays,
-        absence_deduction_amount: summary.absenceDeductionAmount,
         advances_deducted: summary.advancesDeducted,
         net_salary: summary.net,
         payment_method: disburseData.payment_method,
