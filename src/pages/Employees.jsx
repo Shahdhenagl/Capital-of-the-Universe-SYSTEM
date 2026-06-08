@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase, formatCurrency, formatDate, CITIES, POSITIONS, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Users, Plus, Search, Phone, MapPin, Briefcase, Edit, Trash2, X } from 'lucide-react';
-import { formatSaudiLocalPhoneInput, isValidSaudiLocalPhone } from '../lib/integrations';
+import { isValidPhoneNumber } from 'react-phone-number-input';
+import SmartPhoneInput from '../components/SmartPhoneInput';
 
 function Employees({ cityFilter = 'all' }) {
   const { profile } = useAuth();
@@ -113,8 +114,9 @@ function Employees({ cityFilter = 'all' }) {
 
   async function handleSave(e) {
     e.preventDefault();
-    if (formData.phone && !isValidSaudiLocalPhone(formData.phone)) {
-      alert('رقم الهاتف يجب أن يكون 9 أرقام ويبدأ بـ 5');
+    if (formData.phone && !isValidPhoneNumber(formData.phone)) {
+      alert('رقم الجوال غير صحيح أو قصير/طويل جداً.');
+      setSaving(false);
       return;
     }
     setSaving(true);
@@ -380,17 +382,10 @@ function Employees({ cityFilter = 'all' }) {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">الهاتف</label>
-                    <input
-                      type="tel"
-                      className="form-input"
+                    <label className="form-label">الجوال</label>
+                    <SmartPhoneInput
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: formatSaudiLocalPhoneInput(e.target.value) })}
-                      placeholder="5xxxxxxxx"
-                      inputMode="numeric"
-                      maxLength={9}
-                      pattern="5[0-9]{8}"
-                      title="رقم سعودي: 9 أرقام ويبدأ بـ 5"
+                      onChange={(val) => setFormData({ ...formData, phone: val })}
                     />
                   </div>
                 </div>

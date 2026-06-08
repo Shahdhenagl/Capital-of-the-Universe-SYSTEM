@@ -9,6 +9,7 @@ import ClientSearchSelect from '../components/ClientSearchSelect';
 import ClientSiteSelect from '../components/ClientSiteSelect';
 import PrintHeader from '../components/PrintHeader';
 import PrintFooter from '../components/PrintFooter';
+import { notifyQuotationSent } from '../lib/whatsapp';
 
 import { INSTALL_SECTIONS, MAINTENANCE_SECTIONS, createEmptyDetails } from '../lib/formSections';
 
@@ -685,20 +686,32 @@ function Quotations({ cityFilter = 'all' }) {
     }
   }
 
-  function sendWhatsApp(quotation) {
-    const clientPhone = quotation.clients?.phone || '';
-    const phone = clientPhone.replace(/^0/, '966');
+  async function sendWhatsApp(quotation) {
+    const clientPhone = quotation.clients?.phone;
+    if (!clientPhone) {
+      alert('لا يوجد رقم هاتف مسجل لهذا العميل.');
+      return;
+    }
+    
     const publicLink = `${window.location.origin}/q/${quotation.id}`;
-    const message = encodeURIComponent(
-      `مرحباً،\n` +
-      `نود إبلاغكم بعرض السعر التالي من شركة عاصمة الكون:\n\n` +
-      `📋 العنوان: ${quotation.title || ''}\n` +
-      `💰 المبلغ: ${formatCurrency(quotation.amount)}\n` +
-      `📅 التاريخ: ${formatDate(quotation.created_at)}\n\n` +
-      `يمكنكم فتح عرض السعر والرد بالموافقة أو الرفض أو التفاوض من الرابط التالي:\n${publicLink}\n\n` +
-      `نتطلع لتعاونكم معنا.\nشكراً لكم.`
-    );
-    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+    
+    try {
+      const success = await notifyQuotationSent(
+        clientPhone,
+        quotation.title || 'عرض سعر',
+        formatCurrency(quotation.amount),
+        formatDate(quotation.created_at),
+        publicLink
+      );
+      
+      if (success) {
+        alert('تم إرسال عرض السعر للعميل بنجاح عبر الواتساب!');
+      } else {
+        alert('حدث خطأ أثناء محاولة إرسال الرسالة، يرجى المحاولة لاحقاً.');
+      }
+    } catch (err) {
+      alert('حدث خطأ أثناء إرسال الواتساب: ' + err.message);
+    }
   }
 
   async function remindManagers(quotation) {

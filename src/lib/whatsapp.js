@@ -129,3 +129,8 @@ export async function notifyAbsenceRecorded(phone, employeeName, days, startDate
   // Replace 'absence_recorded' with your actual template name in Bevatel
   return sendWhatsAppTemplate(phone, 'absence_recorded', [employeeName, days, startDate]);
 }
+
+// 8. Quotation Sent
+export async function notifyQuotationSent(phone, title, amount, date, link) {
+  return sendWhatsAppTemplate(phone, 'quotation_sent', [title, amount, date, link]);
+}

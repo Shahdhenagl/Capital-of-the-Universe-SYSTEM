@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { Users, Plus, Upload, Search, Phone, MapPin, DollarSign, X, MessageCircle, Navigation, Edit, UserCheck, UserX } from 'lucide-react';
 import { formatSaudiLocalPhoneInput, isValidSaudiLocalPhone, openGoogleMaps, openWhatsApp } from '../lib/integrations';
 import Papa from 'papaparse';
+import SmartPhoneInput from '../components/SmartPhoneInput';
+import { isValidPhoneNumber } from 'react-phone-number-input';
 
 function Clients({ cityFilter = 'all' }) {
   const { profile } = useAuth();
@@ -79,7 +81,7 @@ function Clients({ cityFilter = 'all' }) {
   function handleFormChange(field, value) {
     setForm(prev => ({
       ...prev,
-      [field]: field === 'phone' ? formatSaudiLocalPhoneInput(value) : value
+      [field]: value
     }));
   }
 
@@ -137,8 +139,8 @@ function Clients({ cityFilter = 'all' }) {
   async function handleSaveClient(e) {
     e.preventDefault();
     if (!form.name || !form.phone) return;
-    if (!isValidSaudiLocalPhone(form.phone)) {
-      alert('رقم الهاتف يجب أن يكون 9 أرقام ويبدأ بـ 5');
+    if (!isValidPhoneNumber(form.phone)) {
+      alert('رقم الجوال غير صحيح أو قصير/طويل جداً.');
       return;
     }
 
@@ -457,17 +459,10 @@ function Clients({ cityFilter = 'all' }) {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">رقم الهاتف *</label>
-                    <input
-                      type="tel"
-                      className="form-input"
+                    <label className="form-label">الجوال *</label>
+                    <SmartPhoneInput
                       value={form.phone}
-                      onChange={(e) => handleFormChange('phone', e.target.value)}
-                      placeholder="5xxxxxxxx"
-                      inputMode="numeric"
-                      maxLength={9}
-                      pattern="5[0-9]{8}"
-                      title="رقم سعودي: 9 أرقام ويبدأ بـ 5"
+                      onChange={(val) => handleFormChange('phone', val)}
                       required
                     />
                   </div>
