@@ -222,6 +222,33 @@ function Contracts({ cityFilter = 'all' }) {
     setFilterCity(cityFilter === 'all' ? '' : cityFilter);
   }, [cityFilter]);
 
+  // Handle URL actions (view, edit, print) from Client Profile
+  useEffect(() => {
+    const params = new URLSearchParams(location.search || '');
+    if (contracts.length === 0) return;
+
+    const printId = params.get('print_id');
+    const editId = params.get('edit_id');
+    const viewId = params.get('view_id');
+    
+    if (printId) {
+      const c = contracts.find(x => x.id === printId);
+      if (c) setPrintContractItem(c);
+      window.history.replaceState({}, '', '/contracts');
+    } else if (editId) {
+      const c = contracts.find(x => x.id === editId);
+      if (c) openEditModal(c);
+      window.history.replaceState({}, '', '/contracts');
+    } else if (viewId) {
+      const c = contracts.find(x => x.id === viewId);
+      if (c) {
+        setExpandedContract(viewId === expandedContract ? null : viewId);
+        if (viewId !== expandedContract) fetchSchedule(viewId);
+      }
+      window.history.replaceState({}, '', '/contracts');
+    }
+  }, [location.search, contracts]);
+
   async function fetchData() {
     try {
       setLoading(true);

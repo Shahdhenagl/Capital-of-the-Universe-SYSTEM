@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowRight, Phone, Mail, MapPin, Building2, MessageCircle, Navigation, Printer, Plus, DollarSign, FileText, Calendar, Edit, Trash2, X } from 'lucide-react';
+import { ArrowRight, Phone, Mail, MapPin, Building2, MessageCircle, Navigation, Printer, Plus, DollarSign, FileText, Calendar, Edit, Trash2, X, Eye } from 'lucide-react';
 import { supabase, formatCurrency, formatDate, CITIES, QUOTATION_STATUS, PAYMENT_METHODS, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { notifyIntegrations, openGoogleMaps, openWhatsApp } from '../lib/integrations';
@@ -1145,6 +1145,7 @@ function ClientProfile() {
                         <th>تاريخ النهاية</th>
                         <th>الحالة</th>
                         <th>طريقة الدفع</th>
+                        <th>إجراءات</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1160,6 +1161,31 @@ function ClientProfile() {
                             </span>
                           </td>
                           <td>{PAYMENT_METHODS[c.payment_method] || c.payment_method || '-'}</td>
+                          <td>
+                            <div className="flex gap-8">
+                              <button
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => navigate(`/contracts?view_id=${c.id}`)}
+                                title="عرض التفاصيل"
+                              >
+                                <Eye size={16} />
+                              </button>
+                              <button
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => navigate(`/contracts?print_id=${c.id}`)}
+                                title="طباعة"
+                              >
+                                <Printer size={16} className="text-primary" />
+                              </button>
+                              <button
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => navigate(`/contracts?edit_id=${c.id}`)}
+                                title="تعديل"
+                              >
+                                <Edit size={16} />
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
