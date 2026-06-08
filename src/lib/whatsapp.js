@@ -48,12 +48,10 @@ export async function sendWhatsAppTemplate(phone, templateName, variables = []) 
       }
     };
 
-    const response = await fetch(API_BASE_URL, {
+    const response = await fetch('/api/bevatel', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'api_account_id': API_ACCOUNT_ID,
-        'api_access_token': API_ACCESS_TOKEN
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
     });
