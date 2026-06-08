@@ -111,3 +111,21 @@ export async function notifyInstallationStart(phone, phaseName, date) {
   // Replace 'installation_start' with your actual template name in Bevatel
   return sendWhatsAppTemplate(phone, 'installation_start', [phaseName, date]);
 }
+
+// 5. Salary Paid (For Employees)
+export async function notifySalaryPaid(phone, employeeName, month, netSalary) {
+  // Replace 'salary_paid' with your actual template name in Bevatel
+  return sendWhatsAppTemplate(phone, 'salary_paid', [employeeName, month, netSalary]);
+}
+
+// 6. Loan/Advance Issued (For Employees)
+export async function notifyLoanIssued(phone, employeeName, amount, date) {
+  // Replace 'loan_issued' with your actual template name in Bevatel
+  return sendWhatsAppTemplate(phone, 'loan_issued', [employeeName, amount, date]);
+}
+
+// 7. Absence/Vacation Recorded (For Employees)
+export async function notifyAbsenceRecorded(phone, employeeName, days, startDate) {
+  // Replace 'absence_recorded' with your actual template name in Bevatel
+  return sendWhatsAppTemplate(phone, 'absence_recorded', [employeeName, days, startDate]);
+}

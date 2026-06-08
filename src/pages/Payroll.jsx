@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase, formatCurrency, formatDate, CITIES, logActivity } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { notifyTransaction } from '../lib/integrations';
+import { notifySalaryPaid, notifyLoanIssued, notifyAbsenceRecorded } from '../lib/whatsapp';
 import { 
   Coins, Plus, Search, Calendar, Check, X, Users, 
   TrendingDown, TrendingUp, AlertCircle, DollarSign, Clock, FileText
@@ -416,6 +417,16 @@ function PayrollPage({ cityFilter }) {
         link: '/payroll'
       });
 
+      // Send WhatsApp Notification to Employee
+      if (disburseEmployee.phone) {
+        await notifySalaryPaid(
+          disburseEmployee.phone,
+          disburseEmployee.name,
+          `${monthLabel} / ${selectedYear}`,
+          formatCurrency(summary.net)
+        );
+      }
+
       // Refresh and close
       setShowDisburseModal(false);
       await fetchInitialData();
@@ -511,15 +522,14 @@ function PayrollPage({ cityFilter }) {
             total_expense: amountVal,
             closing_balance: opening - amountVal,
             branch: selectedEmp.branch,
-            notes: 'تقديم سلفة موظف تلقائي'
+            notes: 'سلفة موظف تلقائي'
           });
       }
 
-      // 4. Log activity
       await logActivity(
         profile?.id,
         profile?.full_name,
-        'تقديم سلفة',
+        'تسجيل سلفة',
         'employee_advances',
         advanceRecord.id,
         `تقديم سلفة للموظف ${selectedEmp.name} بقيمة ${formatCurrency(amountVal)}`,
@@ -538,6 +548,16 @@ function PayrollPage({ cityFilter }) {
         description: newAdvance.notes || 'بدون ملاحظات',
         link: '/payroll'
       });
+
+      // Send WhatsApp Notification to Employee
+      if (selectedEmp.phone) {
+        await notifyLoanIssued(
+          selectedEmp.phone,
+          selectedEmp.name,
+          formatCurrency(amountVal),
+          newAdvance.advance_date
+        );
+      }
 
       setShowAdvanceModal(false);
       setNewAdvance({
@@ -668,6 +688,16 @@ function PayrollPage({ cityFilter }) {
         `تم تسجيل غياب للموظف ${selectedEmp.name} لمدة ${payload.days_count} أيام`,
         selectedEmp.branch
       );
+
+      // Send WhatsApp Notification to Employee
+      if (selectedEmp.phone) {
+        await notifyAbsenceRecorded(
+          selectedEmp.phone,
+          selectedEmp.name,
+          payload.days_count,
+          payload.start_date
+        );
+      }
 
       setShowAbsenceModal(false);
       setNewAbsence({
