@@ -1,3 +1,4 @@
+import { sendTelegramText } from './report-utils.js';
 import { createClient } from '@supabase/supabase-js';
 
 // Setup Supabase Client
@@ -37,6 +38,11 @@ export default async function handler(req, res) {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    // 30 days from today for expiring contracts
+    const expiringDate = new Date(today);
+    expiringDate.setDate(expiringDate.getDate() + 30);
+    const expiringDateStr = expiringDate.toISOString().split('T')[0];
 
     // 1. Fetch Tomorrow's Pending Schedules (Reminders)
     const { data: remindersData, error: remindersError } = await supabase
@@ -80,9 +86,27 @@ export default async function handler(req, res) {
 
     if (overdueError) throw overdueError;
 
+    // 3. Fetch Expiring Contracts
+    const { data: expiringData, error: expiringError } = await supabase
+      .from('contracts')
+      .select(`
+        id, 
+        contract_number, 
+        end_date, 
+        clients (
+          name, 
+          phone
+        )
+      `)
+      .eq('status', 'active')
+      .eq('end_date', expiringDateStr);
+
+    if (expiringError) throw expiringError;
+
     const results = {
       remindersSent: 0,
       overdueSent: 0,
+      expiringSent: 0,
       errors: []
     };
 
@@ -180,6 +204,56 @@ export default async function handler(req, res) {
           results.overdueSent++;
         } catch (err) {
           results.errors.push({ type: 'overdue', id: schedule.id, error: err.message });
+        }
+      }
+    }
+
+    // Process Expiring Contracts
+    if (expiringData && expiringData.length > 0) {
+      for (const contract of expiringData) {
+        if (!contract.clients) continue;
+        
+        // Update contract status
+        await supabase.from('contracts').update({ status: 'expiring_soon' }).eq('id', contract.id);
+        
+        // Send Telegram Notification
+        const telegramMsg = `⚠️ *تنبيه: عقد أوشك على الانتهاء* ⚠️\nالعميل: ${contract.clients.name || 'غير معروف'}\nالعقد: ${contract.contract_number}\nتاريخ الانتهاء: ${contract.end_date}\nالرجاء التواصل مع العميل لتجديد العقد.`;
+        try {
+          await sendTelegramText(telegramMsg);
+        } catch(e) { console.error('Telegram error:', e); }
+
+        let cleanPhone = contract.clients.phone?.replace(/\s+/g, '');
+        if (!cleanPhone) continue;
+        
+        if (!cleanPhone.startsWith('+')) {
+          if (cleanPhone.startsWith('05')) cleanPhone = '+966' + cleanPhone.substring(1);
+          else if (cleanPhone.startsWith('5')) cleanPhone = '+966' + cleanPhone;
+          else cleanPhone = '+' + cleanPhone;
+        }
+
+        const payload = {
+          inbox_id: 107608,
+          contact: { phone_number: cleanPhone },
+          message: {
+            template: {
+              name: 'contract_expiring_soon',
+              language: 'ar',
+              parameters: {
+                body: [
+                  contract.clients.name || 'عميلنا العزيز',
+                  contract.contract_number,
+                  contract.end_date
+                ]
+              }
+            }
+          }
+        };
+
+        try {
+          await sendWhatsapp(payload);
+          results.expiringSent++;
+        } catch (err) {
+          results.errors.push({ type: 'expiring', id: contract.id, error: err.message });
         }
       }
     }

@@ -38,6 +38,7 @@ const CONTRACT_TYPES = {
 
 const CONTRACT_STATUS_LABELS = {
   active: 'ساري',
+  expiring_soon: 'أوشك على الانتهاء',
   completed: 'منتهي',
   cancelled: 'موقوف'
 };
@@ -376,6 +377,7 @@ function Contracts({ cityFilter = 'all' }) {
   function getStatusBadge(status) {
     const map = {
       active: 'badge-success',
+      expiring_soon: 'badge-warning',
       completed: 'badge-info',
       cancelled: 'badge-danger'
     };

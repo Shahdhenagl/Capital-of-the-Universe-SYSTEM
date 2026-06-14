@@ -135,3 +135,8 @@ export async function notifyPaymentReminder(phone, clientName, contractNumber, d
 export async function notifyPaymentOverdue(phone, clientName, contractNumber, date, amount) {
   return sendWhatsAppTemplate(phone, 'payment_overdue_auto', [clientName, contractNumber, date, amount]);
 }
+
+// 10. Contract Expiring Soon (Auto-sent 30 days before end_date)
+export async function notifyContractExpiringSoon(phone, clientName, contractNumber, endDate) {
+  return sendWhatsAppTemplate(phone, 'contract_expiring_soon', [clientName, contractNumber, endDate]);
+}

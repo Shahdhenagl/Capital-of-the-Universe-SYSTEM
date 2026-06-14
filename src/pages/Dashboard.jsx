@@ -36,6 +36,7 @@ function Dashboard({ cityFilter }) {
   const [upcomingCollections, setUpcomingCollections] = useState([]);
   const [overdueClients, setOverdueClients] = useState([]);
   const [pendingQuotations, setPendingQuotations] = useState([]);
+  const [expiringContracts, setExpiringContracts] = useState([]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -50,6 +51,7 @@ function Dashboard({ cityFilter }) {
         fetchRecentTransactions(),
         fetchUpcomingCollections(),
         fetchOverdueClients(),
+        fetchExpiringContracts(),
         (profile?.role === 'manager' || profile?.role === 'admin') ? fetchPendingQuotations() : Promise.resolve()
       ]);
     } catch (err) {
@@ -261,6 +263,21 @@ function Dashboard({ cityFilter }) {
     }
     const { data } = await query;
     setPendingQuotations(data || []);
+  }
+
+  async function fetchExpiringContracts() {
+    let query = supabase
+      .from('contracts')
+      .select('id, contract_number, end_date, client_id, clients(name)')
+      .eq('status', 'expiring_soon')
+      .order('end_date', { ascending: true })
+      .limit(10);
+      
+    if (cityFilter && cityFilter !== 'all') {
+      query = query.eq('branch', cityFilter);
+    }
+    const { data } = await query;
+    setExpiringContracts(data || []);
   }
 
   const statCards = [
@@ -566,6 +583,50 @@ function Dashboard({ cityFilter }) {
           </div>
         </div>
       </div>
+
+      {/* Expiring Contracts Alert */}
+      {expiringContracts.length > 0 && (
+        <div className="card mt-24">
+          <div className="card-header">
+            <h3 className="card-title">
+              <AlertCircle size={18} className="text-warning" />
+              عقود أوشكت على الانتهاء
+            </h3>
+            <span className="badge badge-warning">{expiringContracts.length}</span>
+          </div>
+          <div className="card-body">
+            <div>
+              {expiringContracts.map((contract) => (
+                <div
+                  key={contract.id}
+                  className="flex-between"
+                  onClick={() => navigate('/contracts')}
+                  style={{
+                    padding: '12px 16px',
+                    marginBottom: '8px',
+                    background: 'rgba(245, 158, 11, 0.1)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid rgba(245, 158, 11, 0.2)',
+                    cursor: 'pointer',
+                    transition: 'opacity 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                >
+                  <div>
+                    <div className="font-semibold" style={{ fontSize: '0.9rem' }}>
+                      {contract.clients?.name || 'عميل'} (عقد #{contract.contract_number})
+                    </div>
+                    <div className="text-warning" style={{ fontSize: '0.75rem' }}>
+                      تاريخ الانتهاء: {formatDate(contract.end_date)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pending Manager Approvals (Sales Managers & Admins only) */}
       {(profile?.role === 'manager' || profile?.role === 'admin') && pendingQuotations.length > 0 && (
