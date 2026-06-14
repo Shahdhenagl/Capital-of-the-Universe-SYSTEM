@@ -437,7 +437,14 @@ function QuotationDetails() {
             <FileText size={24} className="text-primary" />
             <div>
               <h2 className="font-bold">{quotation.title || 'عرض سعر'}</h2>
-              <span className="text-muted">{quotation.quotation_number || quotation.id?.slice(0, 8)}</span>
+              <div className="flex align-center gap-8">
+                <span className="text-muted">{quotation.quotation_number || quotation.id?.slice(0, 8)}</span>
+                {quotationDetails.project_category && (
+                  <span className="badge badge-secondary" style={{ fontSize: '0.75rem' }}>
+                    {quotationDetails.project_category}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <span className={`badge ${getStatusBadgeClass(quotation.status)}`} style={{ fontSize: '0.9rem', padding: '8px 20px' }}>

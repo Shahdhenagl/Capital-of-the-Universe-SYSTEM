@@ -1159,6 +1159,25 @@ function Quotations({ cityFilter = 'all' }) {
                 </div>
 
                 <div className="form-group">
+                  <label className="form-label">فئة المشروع</label>
+                  <select
+                    className="form-select"
+                    value={form.details?.project_category || ''}
+                    onChange={(e) => setForm(prev => ({ ...prev, details: { ...prev.details, project_category: e.target.value } }))}
+                  >
+                    <option value="">-- اختر الفئة --</option>
+                    <option value="فنادق">فنادق</option>
+                    <option value="عمائر سكنية">عمائر سكنية</option>
+                    <option value="مجمع سكني">مجمع سكني</option>
+                    <option value="مطاعم">مطاعم</option>
+                    <option value="مستشفيات">مستشفيات</option>
+                    <option value="فيلا">فيلا</option>
+                    <option value="مبنى إداري">مبنى إداري</option>
+                    <option value="أخرى">أخرى</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
                   <label className="form-label">نوع عرض السعر</label>
                   <select
                     className="form-select"
