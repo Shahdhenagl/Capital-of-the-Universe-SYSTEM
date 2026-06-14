@@ -119,6 +119,14 @@ export function formatDateShort(date) {
   return new Date(date).toLocaleDateString('ar-SA');
 }
 
+export const CITY_PREFIXES = {
+  mecca: 'M',
+  jeddah: 'J',
+  riyadh: 'R',
+  taif: 'T',
+  dammam: 'D'
+};
+
 export const CITIES = {
   mecca: 'مكة المكرمة',
   jeddah: 'جدة'
