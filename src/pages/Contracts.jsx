@@ -785,6 +785,38 @@ function Contracts({ cityFilter = 'all' }) {
         }
       }
       
+      // --- Elevator logic ---
+      if (!editingContract && elevatorCount > 0) {
+        const prefix = (CITY_PREFIXES && CITY_PREFIXES[form.branch]) ? CITY_PREFIXES[form.branch] : 'E';
+        const { data: highestElevators } = await supabase
+          .from('elevators')
+          .select('code')
+          .eq('branch', form.branch)
+          .order('code', { ascending: false })
+          .limit(1);
+
+        let startNum = 10000;
+        if (highestElevators && highestElevators.length > 0) {
+          const lastCode = highestElevators[0].code;
+          const numPart = parseInt(lastCode.replace(/\D/g, ''));
+          if (!isNaN(numPart)) startNum = numPart;
+        }
+
+        const elevatorsToInsert = [];
+        for (let i = 1; i <= elevatorCount; i++) {
+          elevatorsToInsert.push({
+            contract_id: contractData.id,
+            client_id: finalClientId,
+            branch: form.branch,
+            code: `${prefix}${startNum + i}`
+          });
+        }
+        if (elevatorsToInsert.length > 0) {
+          const { error: elErr } = await supabase.from('elevators').insert(elevatorsToInsert);
+          if (elErr) console.error('Error inserting elevators:', elErr);
+        }
+      }
+
       let insertedCollections = [];
       const validPayments = form.payment_schedule.filter(row => row.amount && row.due_date);
       if (validPayments.length > 0) {
