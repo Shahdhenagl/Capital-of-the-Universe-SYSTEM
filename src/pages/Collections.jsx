@@ -301,11 +301,13 @@ function Collections({ cityFilter = 'all' }) {
       if (selectedSchedule.clients?.phone) {
         // Calculate remaining balance after this payment
         const remainingBalance = Math.max(0, amountDue - totalNowCollected);
+        const receiptLink = collectForm.receipt_url || 'https://capital-of-the-universe-system.vercel.app/collections';
         await notifyCollectionReceived(
           selectedSchedule.clients.phone, 
           collectedAmount, 
           collectForm.receipt_number || 'N/A', 
-          remainingBalance
+          remainingBalance,
+          receiptLink
         );
       }
 

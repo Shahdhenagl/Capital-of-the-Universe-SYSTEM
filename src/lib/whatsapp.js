@@ -85,9 +85,9 @@ export async function notifyContractCreated(phone, clientName, contractNumber, a
 }
 
 // 2. Collection Received
-export async function notifyCollectionReceived(phone, amount, receiptNumber, remainingBalance) {
+export async function notifyCollectionReceived(phone, amount, receiptNumber, remainingBalance, receiptLink) {
   // Replace 'payment_received' with your actual template name in Bevatel
-  return sendWhatsAppTemplate(phone, 'payment_received', [amount, receiptNumber, remainingBalance]);
+  return sendWhatsAppTemplate(phone, 'payment_received_v2', [amount, receiptNumber, remainingBalance, receiptLink]);
 }
 
 // 3. Maintenance Reminder (For Technicians)
@@ -103,9 +103,9 @@ export async function notifyInstallationStart(phone, phaseName, date) {
 }
 
 // 4. Quotation Sent
-export async function notifyQuotationSent(phone, clientName, amount) {
+export async function notifyQuotationSent(phone, clientName, amount, quotationLink) {
   // Matches 'send_quotation' template in Meta
-  return sendWhatsAppTemplate(phone, 'send_quotation', [clientName, amount]);
+  return sendWhatsAppTemplate(phone, 'send_quotation_v2', [clientName, amount, quotationLink]);
 }
 
 // 5. Salary Paid (For Employees)
@@ -127,13 +127,13 @@ export async function notifyAbsenceRecorded(phone, employeeName, days, startDate
 }
 
 // 8. Payment Reminder (Auto-sent 1 day before due)
-export async function notifyPaymentReminder(phone, clientName, contractNumber, date, amount) {
-  return sendWhatsAppTemplate(phone, 'payment_reminder_auto', [clientName, contractNumber, date, amount]);
+export async function notifyPaymentReminder(phone, clientName, contractNumber, date, amount, invoiceLink) {
+  return sendWhatsAppTemplate(phone, 'payment_reminder_auto_v2', [clientName, contractNumber, date, amount, invoiceLink]);
 }
 
 // 9. Payment Overdue (Auto-sent if due date passed and pending)
-export async function notifyPaymentOverdue(phone, clientName, contractNumber, date, amount) {
-  return sendWhatsAppTemplate(phone, 'payment_overdue_auto', [clientName, contractNumber, date, amount]);
+export async function notifyPaymentOverdue(phone, clientName, contractNumber, date, amount, invoiceLink) {
+  return sendWhatsAppTemplate(phone, 'payment_overdue_auto_v2', [clientName, contractNumber, date, amount, invoiceLink]);
 }
 
 // 10. Contract Expiring Soon (Auto-sent 30 days before end_date)

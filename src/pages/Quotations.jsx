@@ -695,10 +695,12 @@ function Quotations({ cityFilter = 'all' }) {
     }
     
     try {
+      const quotationLink = quotation.pdf_url || `https://capital-of-the-universe-system.vercel.app/quotations/${quotation.id}`;
       const success = await notifyQuotationSent(
         clientPhone,
         clientName,
-        formatCurrency(quotation.amount)
+        formatCurrency(quotation.amount),
+        quotationLink
       );
       
       if (success) {
